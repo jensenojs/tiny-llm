@@ -1,3 +1,25 @@
+# =============================================================================
+# 测试基建 (test infrastructure) — 学习注释
+#
+# 本文件是 tests/ 的公共测试工具, 所有 test_week_*_day_*.py 经
+# `from .utils import *` 引入。关键约定:
+#
+# - AVAILABLE_STREAMS / PRECISIONS 与 pytest.mark.parametrize 组合成笛卡尔积,
+#   让每个测试函数在 [cpu, gpu] x [f32, f16] 上重复运行, 验证实现不依赖
+#   特定设备或精度。一次测试函数 = 4 次实际运行 (Week 1 attention 再乘
+#   batch_dimension 4 种 = 16 次)。
+# - assert_allclose 是唯一的数值比较器: bfloat16 先升到 float32 再比;
+#   f32 用严格容差 (rtol=1e-5, atol=1e-6), f16/bfloat16 用宽松容差
+#   (rtol=5e-2) —— float16 尾数 10 bit / bfloat16 尾数 7 bit, 严格比较必然
+#   误报。形状不一致或超差时打印逐点 diff 辅助定位。
+# - tiny_qwen3_mlx_model / qwen3_*_model_exists: Week 3+ 集成测试用的小模型
+#   构造器与真实模型存在性检查 (本地无模型时相关测试自动 skip)。
+#
+# 注意: 本文件不在 tests_refsol 的复制范围内, 不会被 `pdm run test` 覆盖;
+# 而 tests/test_week_*_day_*.py 每次都会被 refsol force 复制, 不要往那里
+# 写持久注释。
+# =============================================================================
+
 import numpy as np
 import mlx.core as mx
 import huggingface_hub
