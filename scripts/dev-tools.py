@@ -1,3 +1,20 @@
+# =============================================================================
+# 测试入口与 refsol 机制 — 学习注释
+#
+# `pdm run test` 经 pyproject.toml 的 [tool.pdm.scripts] (test.cmd) 转发到这里。
+#
+# 核心机制: tests_refsol/ 是测试的权威源, tests/ 是工作副本。
+# `pdm run test --week X --day Y` 每次执行:
+#   1) copy_test(force=True): 把 tests_refsol/test_week_X_day_Y.py 强制复制到
+#      tests/, 覆盖你对测试文件的任何本地修改;
+#   2) pytest -v tests/test_week_X_day_Y.py, 透传其余参数 (pytest 过滤器)。
+#
+# 含义: 你只能改 src/tiny_llm/ 下的实现来让测试通过, 不能改测试本身。
+# 改测试 = 改课程权威, 只能手动改 tests_refsol/ 或 copy-test --force,
+# 且会偏离 refsol 被 diff 发现。不带 --week/--day 时直接跑整个 tests/。
+# `pdm run test-refsol` 直接在 tests_refsol/ 上跑, 用于对照参考实现通过率。
+# =============================================================================
+
 import argparse
 import os
 import shutil
