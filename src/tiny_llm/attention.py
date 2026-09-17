@@ -30,7 +30,12 @@ class SimpleMultiHeadAttention:
         wv: mx.array,
         wo: mx.array,
     ):
-        pass
+        self.num_heads = num_heads
+        self.D = hidden_size // num_heads
+        self.wq = wq
+        self.wk = wk
+        self.wv = wv
+        self.wo = wo
 
     def __call__(
         self,
@@ -39,7 +44,26 @@ class SimpleMultiHeadAttention:
         value: mx.array,
         mask: mx.array | None = None,
     ) -> mx.array:
-        pass
+        # step 1 ① 投影: E → H*D
+        q = linear(query, self.wq)
+        k = linear(key, self.wk)
+        v = linear(value, self.wv)
+        # step 2 ② 拆头
+        q_split = mx.reshape(q, (*q.shape[:-1], self.num_heads, self.D))
+        k_split = mx.reshape(k, (*k.shape[:-1], self.num_heads, self.D))
+        v_split = mx.reshape(v, (*v.shape[:-1], self.num_heads, self.D))
+        # ③ 换轴: L 和 H 交换
+        q_swap = mx.swapaxes(q_split, -3, -2)
+        k_swap = mx.swapaxes(k_split, -3, -2)
+        v_swap = mx.swapaxes(v_split, -3, -2)
+        # 4 attention
+        a = scaled_dot_product_attention_simple(q_swap, k_swap, v_swap, mask=mask)
+        # 5 换回去
+        a_swap = mx.swapaxes(a, -3, -2)
+        # 6 拼头
+        a_reshape = mx.reshape(a_swap, (*a_swap.shape[:-2], self.num_heads * self.D))
+        # 7 混合
+        return linear(a_reshape, self.wo)
 
 
 def causal_mask(L: int, S: int, dtype: mx.Dtype) -> mx.array:
