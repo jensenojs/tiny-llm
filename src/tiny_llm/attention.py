@@ -67,7 +67,15 @@ class SimpleMultiHeadAttention:
 
 
 def causal_mask(L: int, S: int, dtype: mx.Dtype) -> mx.array:
-    pass
+    if L > S:
+        raise ValueError("L should be <= S")
+
+    i = mx.arange(L).reshape(L, 1)
+    j = mx.arange(S).reshape(1, S)
+
+    allowed = j <= i + (S - L)
+    mask = mx.where(allowed, 0.0, float("-inf"))
+    return mask.astype(dtype)
 
 
 def scaled_dot_product_attention_grouped(
