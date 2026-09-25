@@ -85,7 +85,44 @@ def scaled_dot_product_attention_grouped(
     scale: float | None = None,
     mask: mx.array | str | None = None,
 ) -> mx.array:
-    pass
+    # 1. 头数检查
+    H_q = query.shape[-3]
+    H = key.shape[-3]
+    n_repeats = H_q // H
+    if H_q % H != 0:
+        raise ValueError("xxx")
+
+    # 2. 拼车
+    L, D = query.shape[-2], query.shape[-1]
+    S = key.shape[-2]
+    q = query.reshape(*query.shape[:-3], H, n_repeats, L, D)
+    k = key.reshape(*key.shape[:-3], H, 1, S, D)
+    v = value.reshape(*value.shape[:-3], H, 1, S, D)
+
+    # 3. 打分
+    scores = mx.matmul(q, mx.swapaxes(k, -1, -2))
+    if scale is None:
+        scale = 1.0 / (D**0.5)
+    scores = scores * scale
+
+    # 4. 掩码
+    if mask == "causal":
+        mask = causal_mask(L, S, query.dtype)
+    elif mask is not None:
+        # 什么情况下需要reshape?
+        # 第三种要 reshape 的原因：它按 Q 头数 H_q 组织——每个 Q 头带一张 (L, S) 表。但我们的 scores 头维已经拆成了两层 (H, n_repeats)。要相加，mask 的头维也得跟着拆：
+        # (..., H_q, L, S)  →  (..., H, n_repeats, L, S)
+        # 而 "causal" 现算出来的 (L, S) 不用 reshape——它没有头维，广播时自动扩到 (..., H, n_repeats)（从右往左对齐，缺的维按 1 处理）。
+        mask = mask.reshape(*mask.shape[:-3], H, n_repeats, L, S)
+
+    if mask is not None:
+        scores = scores + mask
+
+    #
+    weights = mx.softmax(scores, -1)  # (..., H, n_repeats, L, S)
+    out = mx.matmul(weights, v)  # (..., H, n_repeats, L, D)
+
+    return out.reshape(*out.shape[:-4], H_q, L, D)
 
 
 def paged_attention(
