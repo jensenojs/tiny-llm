@@ -57,9 +57,6 @@ class RoPE:
         cos = self.cos_freqs[offset] if offset is not None else self.cos_freqs[:L]
         sin = self.sin_freqs[offset] if offset is not None else self.sin_freqs[:L]
 
-        cos = cos.astype(x.dtype)
-        sin = sin.astype(x.dtype)
-
         cos = mx.reshape(cos, (1, L, 1, self.M))
         sin = mx.reshape(sin, (1, L, 1, self.M))
 
@@ -96,4 +93,4 @@ class RoPE:
         else:
             # 半维配对: out_a 是旋转后的前半、out_b 是旋转后的后半, 直接拼接
             x_recover = mx.concatenate([out_a, out_b], axis=-1)
-        return x_recover
+        return x_recover.astype(x.dtype)
