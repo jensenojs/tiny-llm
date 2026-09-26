@@ -93,7 +93,14 @@ class Qwen3MultiHeadAttention:
         # ── ⑤ 分组注意力 ──────────────────────────────────────────
         # (B,H_q,L,D) -> (B,H_q,L,D)                        ← 运算
         # 内部: 每个 KV 头被 n_repeats = H_q // H 个 Q 头共享
-        out = scaled_dot_product_attention_grouped(q, k, v, mask=mask)
+        # 打分与 softmax 提升到 float32: bfloat16 尾数太短,
+        # 点积和指数运算的误差会累积 (oracle 同样在进注意力前转 float32)
+        out = scaled_dot_product_attention_grouped(
+            q.astype(mx.float32),
+            k.astype(mx.float32),
+            v.astype(mx.float32),
+            mask=mask,
+        ).astype(x.dtype)
 
         # ── ⑥ 换轴回 + 合头 ────────────────────────────────────────
         # (B,H_q,L,D) -> (B,L,H_q,D) -> (B,L,H_q*D)         ← 重排
