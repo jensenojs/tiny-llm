@@ -25,7 +25,22 @@ class Qwen3MultiHeadAttention:
         theta: int = 1000000,
         rms_norm_eps: float = 1e-5,
     ):
-        pass
+        self.wq = wq
+        self.wk = wk
+        self.wv = wv
+        self.wo = wo
+        self.q_norm = q_norm
+        self.k_norm = k_norm
+        self.theta = theta
+        self.head_dim = head_dim
+        self.num_heads = num_heads
+        self.hidden_size = hidden_size
+        self.max_seq_len = max_seq_len
+        self.num_kv_heads = num_kv_heads
+        self.rms_norm_eps = rms_norm_eps
+        self.rope = RoPE(
+            dims=head_dim, seq_len=max_seq_len, base=theta, traditional=False
+        )
 
     def __call__(
         self,
