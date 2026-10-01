@@ -122,10 +122,18 @@ class Qwen3MLP:
         w_up: mx.array,
         w_down: mx.array,
     ):
-        pass
+        self.dim = dim
+        self.hidden_dim = hidden_dim
+        self.w_gate = w_gate
+        self.w_up = w_up
+        self.w_down = w_down
 
     def __call__(self, x: mx.array) -> mx.array:
-        pass
+        # out = W_down( SiLU(W_gate x) ⊙ W_up x )
+        # W_gate/W_up: (I, E) 把 E 维升到 I≈4E; W_down: (E, I) 投回 E.
+        gate = silu(linear(x, self.w_gate))
+        up = linear(x, self.w_up)
+        return linear(gate * up, self.w_down)
 
 
 class Qwen3TransformerBlock:
