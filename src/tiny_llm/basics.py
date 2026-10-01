@@ -18,4 +18,9 @@ def linear(
 
 
 def silu(x: mx.array) -> mx.array:
-    pass
+    # z = exp(-|x|) <= 1, 指数恒非正, 任何输入都不溢出.
+    # x < 0 时 1/(1+exp(-x)) = z/(1+z), 避免先算 exp(大正数) 再溢出;
+    # 也避免 1-(1/(1+z)) 变形: 1+z 的舍入会先把 z 抹掉, 减法再放大丢失.
+    z = mx.exp(-mx.abs(x))
+    sigmoid = mx.where(x < 0, z / (1 + z), 1 / (1 + z))
+    return x * sigmoid
