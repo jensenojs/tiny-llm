@@ -85,6 +85,27 @@ def scaled_dot_product_attention_grouped(
     scale: float | None = None,
     mask: mx.array | str | None = None,
 ) -> mx.array:
+    # ── GQA 全景: 拼车 → 打分 → 掩码 → 加权 ──────────────────────
+    #
+    #   query (…,H_q,L,D)          key (…,H,S,D)      value (…,H,S,D)
+    #        │                          │                   │
+    #        ▼ 拆成 n_repeats 组        ▼ 插 1              ▼ 插 1
+    #   (…,H,n_rep,L,D)           (…,H,1,S,D)         (…,H,1,S,D)
+    #        │                          │                   │
+    #        └────────┐ 广播: 1 → n_rep │                   │
+    #                 ▼                 ▼                   │
+    #        scores = q @ k^T  (…,H,n_rep,L,S)              │
+    #                 │ + mask (广播到同形)                 │
+    #                 ▼                                     │
+    #        weights = softmax(scores, 最后维)  (…,H,n_rep,L,S)
+    #                 │ @ value (广播: 1 → n_rep)           ▼
+    #                 └──────────────────────────────► (…,H,n_rep,L,D)
+    #                 ▼ 还原
+    #        out (…,H_q,L,D)
+    #
+    #   拼车语义: Q 头 i 坐 KV 头 i // n_repeats 的车
+    #   (例 H_q=4, H=2: Q0,Q1 → KV0;  Q2,Q3 → KV1)
+
     # 1. 头数检查
     H_q = query.shape[-3]
     H = key.shape[-3]
