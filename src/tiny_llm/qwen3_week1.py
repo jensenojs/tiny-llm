@@ -7,6 +7,16 @@ from typing import Any
 from .embedding import Embedding
 from .quantize import dequantize_linear
 
+# ── 记号表 (全文件通用, 各图中的缩写都查这里) ─────────────────────
+#   B:  batch, 批大小
+#   L:  序列长度 (query 侧的 token 数)
+#   S:  key/value 侧的序列长度 (prefill 时 S=L; decode 时 L=1, S=已生成历史)
+#   E:  hidden_size, 模型统一的表示宽度 (= 嵌入维度, 层间恒定)
+#   H_q: num_heads, query 头数
+#   H:  num_kv_heads, KV 头数 (GQA: H ≤ H_q, 每个 KV 头被 H_q//H 个 Q 头共享)
+#   D:  head_dim, 每个头的维数 (独立配置, 不由 E/H_q 推出)
+#   I:  intermediate_size, FFN 中间宽度 (Qwen3 约为 4E)
+
 
 class Qwen3MultiHeadAttention:
     def __init__(
@@ -47,6 +57,13 @@ class Qwen3MultiHeadAttention:
         x: mx.array,
         mask: mx.array | str | None = None,
     ) -> mx.array:
+        # ── 鸟瞰: 三条支路, ①-④ 都是备战(重排/加工), 只有 ⑤ 真正跨位置计算 ──
+        #
+        #   x (B,L,E)
+        #   ├──► wq ─► 拆 H_q 头─► RMSNorm(q_norm) ─► RoPE ─┐
+        #   ├──► wk ─► 拆 H  头 ─► RMSNorm(k_norm) ─► RoPE ─┼─► ⑤ GQA 打分加权 ─► 合头 ─► wo ─► out
+        #   └──► wv ─► 拆 H  头 ────────────────────────────┘
+        #   (Q/K 加工进"内容+位置"; V 是载荷, 只换轴不加工)
         # x: (B, L, E) —— 每个 token 一条 E 维向量
         B, L, _ = x.shape
 
@@ -129,8 +146,27 @@ class Qwen3MLP:
         self.w_down = w_down
 
     def __call__(self, x: mx.array) -> mx.array:
-        # out = W_down( SiLU(W_gate x) ⊙ W_up x )
-        # W_gate/W_up: (I, E) 把 E 维升到 I≈4E; W_down: (E, I) 投回 E.
+        # FFN 逐位置独立: (B, L, E) 的每个位置单独走一遍下面的流程, 位置之间不通信
+        # (通信是 attention 的职责, FFN 只做逐位置加工).
+        #
+        # big idea: 升维 -> 非线性 -> 降维.
+        #   1. W_gate / W_up 把每个位置从 E 维升到 I≈4E 维: 在更宽的空间里给非线性腾出施展余地;
+        #   2. SiLU(W_gate x) 造出 I 维门控, 逐通道决定 W_up x 的对应分量放行多少 ——
+        #      两条支路逐元素相乘, 这个乘法是整个 FFN 非线性的主要来源;
+        #   3. W_down 把 I 维压回 E 维: 残差连接 x = x + FFN(x) 要求进出口同宽.
+        #
+        #        x (B,L,E) —— 每个位置独立
+        #        │
+        #        ├──► W_gate (E→I) ──► SiLU ──────┐
+        #        │                                ⊙ ──► W_down (I→E) ──► out (B,L,E)
+        #        └──► W_up   (E→I) ───────────────┘
+        #
+        # 形状流 (单个位置):
+        #   x:    (E)
+        #   gate = SiLU(x @ W_gate.T)   (E) -> (I)   # 非线性在这里进入
+        #   up   = x @ W_up.T           (E) -> (I)   # 线性支路
+        #   h    = gate * up            (I) 逐元素乘, 形状不变
+        #   out  = h @ W_down.T         (I) -> (E)
         gate = silu(linear(x, self.w_gate))
         up = linear(x, self.w_up)
         return linear(gate * up, self.w_down)
@@ -159,14 +195,66 @@ class Qwen3TransformerBlock:
         max_seq_len: int = 32768,
         theta: int = 1000000,
     ):
-        pass
+        self.input_layernorm = RMSNorm(hidden_size, w_input_layernorm)
+        self.post_attention_layernorm = RMSNorm(hidden_size, w_post_attention_layernorm)
+        self.multiHeadAttention = Qwen3MultiHeadAttention(
+            hidden_size=hidden_size,
+            num_heads=num_attention_heads,
+            num_kv_heads=num_kv_heads,
+            head_dim=head_dim,
+            wq=wq,
+            wk=wk,
+            wv=wv,
+            wo=wo,
+            q_norm=q_norm,
+            k_norm=k_norm,
+            max_seq_len=max_seq_len,
+            theta=theta,
+            rms_norm_eps=rms_norm_eps,
+        )
+        self.mlp = Qwen3MLP(
+            dim=hidden_size,
+            hidden_dim=intermediate_size,
+            w_gate=w_gate,
+            w_up=w_up,
+            w_down=w_down,
+        )
 
     def __call__(
         self,
         x: mx.array,
         mask: mx.array | str | None = None,
     ) -> mx.array:
-        pass
+        # ── Block 全景 (Pre-LN: 归一化在旁路, 残差加法是主干) ─────────
+        #
+        #            x (B,L,E)
+        #            │
+        #            ├──────────────────► 残差1 ──┐
+        #            ▼                            │
+        #      input_layernorm                    │
+        #            ▼                            │
+        #      multiHeadAttention                 │
+        #            ▼                            │
+        #            + ◄──────────────────────────┘    x = x + attn(ln₁(x))
+        #            │
+        #            ├──────────────────► 残差2 ──┐
+        #            ▼                            │
+        #      post_attention_layernorm           │
+        #            ▼                            │
+        #           mlp                           │
+        #            ▼                            │
+        #            + ◄──────────────────────────┘    x = x + mlp(ln₂(x))
+        #            │
+        #            ▼
+        #        out (B,L,E)
+        x_input_layernorm = self.input_layernorm(x)
+        x_multiHeadAttention = self.multiHeadAttention(x_input_layernorm, mask=mask)
+        x_delta1 = x_multiHeadAttention + x
+
+        x_post_attention_layernorm = self.post_attention_layernorm(x_delta1)
+        x_mlp = self.mlp(x_post_attention_layernorm)
+        x_delta2 = x_mlp + x_delta1
+        return x_delta2
 
 
 class Qwen3ModelWeek1:
