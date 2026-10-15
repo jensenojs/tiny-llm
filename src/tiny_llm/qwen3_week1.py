@@ -1,6 +1,6 @@
 import mlx.core as mx
 from .basics import linear, silu
-from .attention import scaled_dot_product_attention_grouped
+from .attention import scaled_dot_product_attention_grouped, causal_mask
 from .layer_norm import RMSNorm
 from .positional_encoding import RoPE
 from typing import Any
@@ -258,11 +258,98 @@ class Qwen3TransformerBlock:
 
 
 class Qwen3ModelWeek1:
+    # 装配思路: 从 mlx_lm 加载好的框架模型里把权重拆出来, 搬进我们手写的纯函数实现。
+    #
+    # REPL 探查过程 (对象树怎么摸出来的):
+    #   >>> print(m.model.layers[0])          # 整棵子树, 每个模块的类型和形状一目了然
+    #   >>> m.model.keys()                    # 外壳内层: ['embed_tokens', 'layers', 'norm']
+    #   >>> m.model.layers[0].self_attn.keys()  # 子模块名单
+    #   >>> type(m.model.layers[0].self_attn.q_proj).__name__  # QuantizedLinear
+    #   >>> m.model.layers[0].mlp.up_proj.group_size, .bits    # 128, 4
+    #
+    # 对象树 (0.6B 实测):
+    #   mlx_model                    # Model 外壳 (mlx_lm/models/qwen3.py:163)
+    #   ├── args                     # ModelArgs, 所有数字
+    #   ├── model                    # Qwen3Model 主干 (qwen3.py:129)
+    #   │   ├── embed_tokens         # QuantizedEmbedding (vocab, E)
+    #   │   ├── layers[N]            # TransformerBlock, 结构见 qwen3.py:103
+    #   │   │   ├── self_attn        # q_proj/k_proj/v_proj/o_proj (QuantizedLinear)
+    #   │   │   │                    # + q_norm/k_norm (RMSNorm) + rope
+    #   │   │   ├── mlp              # gate_proj/up_proj/down_proj (QuantizedLinear)
+    #   │   │   └── input/post_attention_layernorm  # RMSNorm
+    #   │   └── norm                 # final RMSNorm, 与 layers 平级, 所有 block 之后
+    #   └── lm_head                  # 仅不 tie 时存在; 0.6B keys() 里没有 → tie 模型
+    #
+    # dequantize 判定规则 (怎么看出谁要过 dequantize_linear):
+    #   - Linear/Embedding 家族: config.json 有 "quantization" 块时, mlx_lm 加载前
+    #     把它们整类换成 QuantizedLinear/QuantizedEmbedding
+    #     (替换逻辑在 mlx_lm/models/base.py), 五件套齐全 → dequantize_linear(模块),
+    #     模块内部自己取 .weight/.scales/.biases/.group_size/.bits (见 src/tiny_llm/quantize.py)。
+    #     注意 keys() 只列参数数组 ['weight','scales','biases'],
+    #     group_size/bits 是普通属性, 要单独访问。
+    #   - RMSNorm 家族 (q_norm/k_norm/两个 layernorm/final norm):
+    #     γ 向量从不量化 (替换名单里没有 RMSNorm), keys() 只有 ['weight'] → 直接取 .weight。
+    #   - 拿不准时 keys()/type().__name__ 实测。
     def __init__(self, mlx_model: Any):
-        pass
+        args = mlx_model.args
+
+        layers = []
+        for layer in mlx_model.model.layers:
+            sa = layer.self_attn
+            mlp = layer.mlp
+            block = Qwen3TransformerBlock(
+                # 数字
+                num_attention_heads=args.num_attention_heads,
+                num_kv_heads=args.num_key_value_heads,
+                hidden_size=args.hidden_size,
+                head_dim=args.head_dim,
+                intermediate_size=args.intermediate_size,
+                rms_norm_eps=args.rms_norm_eps,
+                # 权重
+                wq=dequantize_linear(sa.q_proj),
+                wk=dequantize_linear(sa.k_proj),
+                wv=dequantize_linear(sa.v_proj),
+                wo=dequantize_linear(sa.o_proj),
+                q_norm=sa.q_norm.weight,
+                k_norm=sa.k_norm.weight,
+                w_gate=dequantize_linear(mlp.gate_proj),
+                w_up=dequantize_linear(mlp.up_proj),
+                w_down=dequantize_linear(mlp.down_proj),
+                w_input_layernorm=layer.input_layernorm.weight,
+                w_post_attention_layernorm=layer.post_attention_layernorm.weight,
+            )
+            layers.append(block)
+
+        self.layers = layers
+        # 查表权重 (vocab, E): QuantizedEmbedding 五件套齐全, 还原成数组供 __call__ 查表
+        self.embed_tokens = Embedding(
+            args.vocab_size,
+            args.hidden_size,
+            dequantize_linear(mlx_model.model.embed_tokens),
+        )
+        # final norm γ: 所有 block 跑完后、出口投影前的最后一道 RMSNorm (与 layers 平级, 不是某层内部)
+        self.norm = RMSNorm(args.hidden_size, mlx_model.model.norm.weight)
+        # 出口投影 (vocab, E): tie=True 时框架里根本没有 lm_head 模块 (0.6B),
+        # 出口复用嵌入矩阵 — 同一份 (vocab, E) 权重, 查表和 @ .T 两用
+        if not args.tie_word_embeddings:
+            # if hasattr(mlx_model, "lm_head"): same
+            # self.lm_head = dequantize_linear(mlx_model.lm_head)
+            self.lm_head = Embedding(
+                args.vocab_size, args.hidden_size, dequantize_linear(mlx_model.lm_head)
+            )
+        else:
+            self.lm_head = self.embed_tokens
 
     def __call__(
         self,
         inputs: mx.array,
     ) -> mx.array:
-        pass
+
+        h = self.embed_tokens(inputs)
+        mask = causal_mask(h.shape[1], h.shape[1], inputs.dtype)  # ?
+
+        for layer in self.layers:
+            h = layer(h, mask)
+
+        x = self.norm(h)
+        return self.lm_head.as_linear(x)
