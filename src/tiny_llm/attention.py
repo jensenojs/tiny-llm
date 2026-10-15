@@ -67,6 +67,30 @@ class SimpleMultiHeadAttention:
 
 
 def causal_mask(L: int, S: int, dtype: mx.Dtype) -> mx.array:
+    # ── L 和 S 是"两个角色"的行数, 不是两个独立的序列 ─────────────────
+    #
+    #   L: query 侧行数 —— 本步有多少个 token 在"发问" (要算注意力输出的)
+    #   S: key/value 侧行数 —— 发问者能"看见"的历史有多少条 (打分的分母侧)
+    #   训练/prefill: L = S = 整句长度, 自问自答, 掩码是方阵
+    #   decode:       L = 1, S = 已生成的全部历史, 一行对多列
+    #
+    #   输出 M 的形状 (L, S), M[i, j] = 0 表示"query 位置 i 允许看 key 位置 j",
+    #   -inf 表示禁止 (softmax 后权重恰好为 0 —— 禁止是用 -inf 说的, 不是用 0):
+    #
+    #   L = S = 4 的方阵 (prefill):         行 i → query 位置 (S-L)+i = i
+    #        j=0   j=1   j=2   j=3
+    #   i=0 [  0   -inf  -inf  -inf ]        位置 0 只看自己
+    #   i=1 [  0     0   -inf  -inf ]        位置 1 看自己 + 前一个
+    #   i=2 [  0     0     0   -inf ]
+    #   i=3 [  0     0     0     0  ]        最后一个能看全部
+    #
+    #   L = 1, S = 4 (decode):               行 i=0 → query 位置 (S-L)+0 = 3
+    #        j=0   j=1   j=2   j=3
+    #   i=0 [  0     0     0     0  ]        新 token 能看全部历史, 一行全 0
+    #   (这就是 decode 时掩码形同虚设的原因)
+    #
+    #   对齐规则: query 的第 i 行对应全文位置 (S-L)+i (右对齐), 于是
+    #   允许条件统一写成 j <= i + (S - L); L=S 时退化成下三角 j <= i.
     if L > S:
         raise ValueError("L should be <= S")
 
@@ -129,7 +153,8 @@ def scaled_dot_product_attention_grouped(
     # 4. 掩码
     if mask == "causal":
         mask = causal_mask(L, S, query.dtype)
-    elif mask is not None:
+    elif mask is not None and mask.ndim >= 3 and mask.shape[-3] == H_q:
+        # 只有 (…, H_q, L, S) 这种按 Q 头组织的掩码才需要拆头
         # 什么情况下需要reshape?
         # 第三种要 reshape 的原因：它按 Q 头数 H_q 组织——每个 Q 头带一张 (L, S) 表。但我们的 scores 头维已经拆成了两层 (H, n_repeats)。要相加，mask 的头维也得跟着拆：
         # (..., H_q, L, S)  →  (..., H, n_repeats, L, S)
