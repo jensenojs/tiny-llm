@@ -346,7 +346,9 @@ class Qwen3ModelWeek1:
     ) -> mx.array:
 
         h = self.embed_tokens(inputs)
-        mask = causal_mask(h.shape[1], h.shape[1], inputs.dtype)  # ?
+        # 掩码 dtype 必须跟计算侧 (h, bf16 浮点) 走, 不能跟 inputs (token 索引, 整数) 走:
+        # 掩码里是 -inf, 铸成整型会变成 INT_MIN, 加进 scores 后数值行为损坏
+        mask = causal_mask(h.shape[1], h.shape[1], h.dtype)
 
         for layer in self.layers:
             h = layer(h, mask)

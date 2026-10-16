@@ -118,14 +118,19 @@ def simple_generate(
         if nxt.item() == tokenizer.eos_token_id:  # .item(): (1,)数组拆封成 int
             break
         detokenize.add_token(nxt.item())
-        if detokenize.last_segment:
-            print(detokenize.last_segment, end="")
+        # last_segment 是"读取即消耗"属性 (tokenizer_utils.py:53): 每次访问返回
+        # 自上次访问以来的新文本段并推进 offset, 第二次访问拿到空串。
+        # 必须只读一次存变量, if 和 print 共用。
+        segment = detokenize.last_segment
+        if segment:
+            print(segment, end="")
         nxt = _step(model, tokens)
         tokens = mx.concatenate([tokens, nxt])
 
     detokenize.finalize()
-    if detokenize.last_segment:
-        print(detokenize.last_segment, end="")
+    segment = detokenize.last_segment
+    if segment:
+        print(segment, end="")
 
 
 def simple_generate_with_kv_cache(
