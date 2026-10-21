@@ -54,8 +54,8 @@ def simple_generate(
     #   可能被切成 E4 BD + A0 两个 token)。逐 id decode 直接打, 屏幕上全是碎片。
     #   流式解码器不逐 token 解码, 而是"重解码 diff": 每次对攒过的全部 token
     #   整体 decode, 新长出来的文本段 (last_segment) 才放出来; 只补了半个字
-    #   时 last_segment 为空, 继续攒。这手法不依赖"前缀稳定"性质
-    #   (字节级 BPE 有此性质; SentencePiece 类吞空格词表没有, 手法照样工作)。
+    #   时 last_segment 为空, 继续攒。全量重解码对任何词表方案都成立;
+    #   想改成双指针增量 (只 decode 新增 token) 才需要前缀稳定性。
     #   它有状态, 由此三个纪律:
     #     1. tokenizer.detokenizer 这个 @property 每次访问都造全新对象
     #        (tokenizer_utils.py:450) → 循环外 bind 一次, 全程复用同一个
@@ -105,9 +105,9 @@ def simple_generate(
     # (测试 FakeTokenizer 也验证: True 会多塞一个 6 进来)
     tokens = tokenizer.encode(prompt, add_special_tokens=False)
     detokenize = tokenizer.detokenizer
-    detokenize.reset()  # why reset?
-
+    detokenize.reset()  # 解码器带状态, 复用前先归零
     tokens = mx.array(tokens)
+
     # prefill: 第一个 token
     nxt = _step(model, tokens)
     tokens = mx.concatenate([tokens, nxt])
@@ -118,10 +118,7 @@ def simple_generate(
         if nxt.item() == tokenizer.eos_token_id:  # .item(): (1,)数组拆封成 int
             break
         detokenize.add_token(nxt.item())
-        # last_segment 是"读取即消耗"属性 (tokenizer_utils.py:53): 每次访问返回
-        # 自上次访问以来的新文本段并推进 offset, 第二次访问拿到空串。
-        # 必须只读一次存变量, if 和 print 共用。
-        segment = detokenize.last_segment
+        segment = detokenize.last_segment  # 读一次即消费一次, 存下来复用
         if segment:
             print(segment, end="")
         nxt = _step(model, tokens)
