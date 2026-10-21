@@ -559,3 +559,71 @@ Task 3 要装配的 `Qwen3MultiHeadAttention` 就是 qwen3.py 这份 `__init__` 
 **设计判决**。pop 语义合法（流式交付的标准协议）；包装违法——property 壳 + 字段名（`last_segment` 听着像躺在那的值）卖取件行为，三重错位。同族协议里交付动作都用动词命名（`next()`、`read()`）。改进形状：`next_segment()` 方法名，或同时提供 peek。调用方契约：读一次、存变量、判空与打印都用变量。
 
 **mock 盲区**。`FakeDetokenizer.last_segment` 是普通字段（peek 语义），测试绿只能证明调用方与假货一致，证明不了假货与真货一致。凡是 mock 这一课通用：mock 复刻接口形状，语义契约要对源码核。
+
+### 对话模板: apply_chat_template 的四层与模板原文
+
+分词器把字符串变成 id 之前，还有一步：把 `messages` 列表渲染成一段带角色标记的文本。这一步由模型自带的 jinja 模板完成，代码在 transformers 里，模板文本在模型目录里。两处分开找。
+
+**调用点**（`main.py:162-167`）：
+
+```python
+prompt = tokenizer.apply_chat_template(
+    messages,
+    tokenize=False,
+    add_generation_prompt=True,
+    enable_thinking=args.enable_thinking,
+)
+```
+
+三个参数的语义：`tokenize=False` 返回渲染后的字符串（True 会顺手 encode，返回 id 数组，此时它自己处理 `add_special_tokens=False`，避免模板壳与特殊标记叠两层）；`add_generation_prompt=True` 让渲染停在 assistant 该说话的起跑线上，模板末尾补 `<|im_start|>assistant\n`；`enable_thinking` 只是作为变量传进模板，由模板里的条件分支决定要不要吐思维链的开头标记。
+
+**四层调用链**（路径相对 `.venv/lib/python3.10/site-packages`）：
+
+1. `transformers/tokenization_utils_base.py:3002`：`PreTrainedTokenizerBase.apply_chat_template`，入口。
+2. 同文件 `:3098`：`chat_template = self.get_chat_template(chat_template, tools)`，取模板文本。
+3. 同文件 `:3238`：`get_chat_template`。默认读 `tokenizer_config.json` 的 `chat_template` 字段；也可以按名字取 repo 里单独的模板文件。
+4. `transformers/utils/chat_template_utils.py:498`：`render_jinja_template`。`:489-495` 建 `ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True, ...)`，把模板字符串编译成 jinja 模板，再把 `messages`、`add_generation_prompt`、`enable_thinking` 作为变量渲染。`immutable` 禁止模板改环境，`sandboxed` 限制可调用的函数——模板来自模型仓库，属于不可信输入。
+
+**模板文本在哪**。不在 Python 包里，在模型快照目录：
+
+```
+~/.cache/huggingface/hub/models--Qwen--Qwen3-0.6B-MLX-4bit/snapshots/173234aa840d113125e9f2271100ddbaf16c9620/tokenizer_config.json
+```
+
+字段 `chat_template`，约 4100 字符。同目录另外两个文件容易混：`tokenizer.json` 是 fast tokenizer 的序列化产物（词表、合并规则、特殊 token 表），`vocab.json` 与 `merges.txt` 是同一份词表的旧格式表示。三者都不是模板。
+
+读原文：
+
+```bash
+python3 -c "import json,glob;print(json.load(open(glob.glob('$HOME/.cache/huggingface/hub/models--Qwen--Qwen3-0.6B-MLX-4bit/snapshots/*/tokenizer_config.json')[0]))['chat_template'])"
+```
+
+**模板结构**。按顺序四段：`tools` 存在时先写一个 system 壳并展开工具签名（`<tools>` 里每个工具 `| tojson` 一行）；然后写 system 消息（`messages[0].role == 'system'` 才写）；再按 `for message in messages` 循环写 user/assistant 段，每段 `<|im_start|>{role}\n{content}<|im_end|>\n`；最后 `add_generation_prompt` 为真时补 `<|im_start|>assistant\n`；`enable_thinking` 显式为 false 时再补一个空的 `<think>\n\n</think>\n\n` 块——形状上思维链已开已闭，解码从闭标记之后接着写，模型直接作答。标记是 `<think>`，不是 `<|think|>`。原文（79-84 行）：
+
+```jinja
+{%- if add_generation_prompt %}
+    {{- '<|im_start|>assistant\n' }}
+    {%- if enable_thinking is defined and enable_thinking is false %}
+        {{- '<think>\n\n</think>\n\n' }}
+    {%- endif %}
+{%- endif %}
+```
+
+中间还有一个预处理段（17-23 行）：倒序扫 messages 找最近的真正用户提问下标，存进 `namespace`。判据是 role 为 user 且内容不含 `<tool_response>`；多步工具回合里包着工具返回的 user 段不算新提问。后面 assistant 段的 `<think>` 保留与否按这个下标切。开头一段工具分支的原文：
+
+```jinja
+{%- if tools %}
+    {{- '<|im_start|>system\n' }}
+    {%- if messages[0].role == 'system' %}
+        {{- messages[0].content + '\n\n' }}
+    {%- endif %}
+    {{- "# Tools\n\nYou may call one or more functions to assist with the user query..." }}
+    {%- for tool in tools %}
+        {{- "\n" }}
+        {{- tool | tojson }}
+    {%- endfor %}
+```
+
+读 jinja 只需要认三种记号：`{% ... %}` 是控制流（if/for），`{{ ... }}` 是取值输出，`{%-` 与 `-}}` 是修剪标记，把该标记两侧的空白（换行、缩进）吃掉。模板作者靠修剪标记让输出既好读又不带多余空行——`trim_blocks=True` 与 `lstrip_blocks=True` 是环境级默认，模板内的局部 `-` 覆盖它。模板输出的每个字符都进入编码；多一个换行就多一份待编码的字符，是否独立成一个 token 由合并规则决定。
+
+模板本体逐行拆解读留待需要时再做，本节只把位置、层数、参数语义和读取方式固定下来。
