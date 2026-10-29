@@ -151,6 +151,12 @@ def scaled_dot_product_attention_grouped(
     scores = scores * scale
 
     # 4. 掩码
+    #
+    #   dtype 取 query 的: 掩码要加进 scores, 而 scores 由 query 和 key 打分得到,
+    #   这里两者同类型 (Qwen3 的 q/k/v 在进本函数前已被铸成 float32).
+    #   借错一次不会报错, 只会静默失效: -inf 只在浮点域成立, 铸进整数域由目标
+    #   类型决定 —— GPU 上 int64 / uint32 给 0, 而 0 在加性掩码里正是"放行";
+    #   int32 给 INT32_MIN, 勉强还算屏蔽. 这几种结果都是合法值, 下游一路放行.
     if mask == "causal":
         mask = causal_mask(L, S, query.dtype)
     elif mask is not None and mask.ndim >= 3 and mask.shape[-3] == H_q:
