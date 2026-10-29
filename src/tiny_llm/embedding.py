@@ -8,11 +8,15 @@ class Embedding:
         self.weight = weight
 
     def __call__(self, x: mx.array) -> mx.array:
-        # 入口: 按编号查行, (N..) -> (N.., E)
+        # 查表: 每个整数换成一整行
+        #   x      (B, L)       int32, 行号
+        #   weight (V, E)       bf16, 词表矩阵
+        #   返回   (B, L, E)    每个位置取 weight 的对应行
         return self.weight[x]
 
     def as_linear(self, x: mx.array) -> mx.array:
-        # 出口: 和每一行点积, (N.., E) -> (N.., V)
+        # 出口: 每个位置的 E 维向量和整张词表点积
+        #   x (B, L, E) @ weight.T (E, V) -> (B, L, V)
         return x @ self.weight.T
 
 
