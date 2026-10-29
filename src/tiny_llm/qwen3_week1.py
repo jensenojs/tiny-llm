@@ -1,5 +1,6 @@
 import mlx.core as mx
 from .basics import linear, silu
+from .trace import stage
 from .attention import scaled_dot_product_attention_grouped
 from .layer_norm import RMSNorm
 from .positional_encoding import RoPE
@@ -339,6 +340,14 @@ class Qwen3ModelWeek1:
             )
         else:
             self.lm_head = self.embed_tokens
+
+        stage(
+            0,
+            "args",
+            f"E={args.hidden_size} V={args.vocab_size} layers={len(layers)}"
+            f" Hq={args.num_attention_heads} H={args.num_key_value_heads}"
+            f" D={args.head_dim} I={args.intermediate_size} tie={args.tie_word_embeddings}",
+        )
 
     def __call__(
         self,

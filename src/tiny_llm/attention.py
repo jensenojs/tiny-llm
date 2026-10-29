@@ -1,5 +1,6 @@
 import mlx.core as mx
 from .basics import softmax, linear
+from .trace import stage_once
 
 
 def scaled_dot_product_attention_simple(
@@ -159,6 +160,17 @@ def scaled_dot_product_attention_grouped(
     #   int32 给 INT32_MIN, 勉强还算屏蔽. 这几种结果都是合法值, 下游一路放行.
     if mask == "causal":
         mask = causal_mask(L, S, query.dtype)
+        # 一行看整张表: 逐行数"允许"的列数 (值为 0 的个数).
+        #   期望由形状推出, 不写死: 第 i 行放行 i + (S - L) + 1 列.
+        #   L = S 时是 [1,2,3,…]; L=1, S=34 时只有一行, 值是 34.
+        #   掩码全零时每行都等于 S, 而第 0 行期望放行 1 列, 第一位就不一样.
+        _zeros = (mask == 0).sum(axis=1)
+        _want = [i + (S - L) + 1 for i in range(min(6, L))]
+        stage_once(
+            3,
+            "mask",
+            f"{mask.dtype}  zeros/row={_zeros[: len(_want)].tolist()}  want={_want}",
+        )
     elif mask is not None and mask.ndim >= 3 and mask.shape[-3] == H_q:
         # 只有 (…, H_q, L, S) 这种按 Q 头组织的掩码才需要拆头
         # 什么情况下需要reshape?
