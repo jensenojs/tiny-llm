@@ -118,8 +118,16 @@ def simple_generate(
         if nxt.item() == tokenizer.eos_token_id:  # .item(): (1,)数组拆封成 int
             break
         detokenize.add_token(nxt.item())
+        # 探针: 先读一次看拿到什么, 再走业务分支
+        import sys
+
+        print(
+            f"<nxt={nxt.item():<7} last_segment={detokenize.last_segment!r}>",
+            file=sys.stderr,
+        )
         if detokenize.last_segment:
             print(detokenize.last_segment, end="")
+            print("  [进了分支]", file=sys.stderr)
         nxt = _step(model, tokens)
         tokens = mx.concatenate([tokens, nxt])
 
