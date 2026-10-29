@@ -345,11 +345,23 @@ class Qwen3ModelWeek1:
         inputs: mx.array,
     ) -> mx.array:
 
+        # ── 这一次调用里各个量的形状 ────────────────────────────────
+        #   B  batch                1
+        #   L  本步发问的 token 数     这一版恒等于 S (每步把整句重跑一遍)
+        #   S  能看见的历史长度        这一版恒等于 L; KV 版 decode 时 L=1, S=历史长
+        #   E  hidden_size          0.6B 是 1024
+        #   V  词表大小              151936
+        #
+        #   inputs    (B, L)        int32, 行号
+        #   → 查表    (B, L, E)     每个行号换成一行向量
+        #   → 28 层   (B, L, E)     形状不变, 数值被反复改写
+        #   → norm    (B, L, E)     最后一次 RMSNorm
+        #   → lm_head (B, L, V)     每个位置对词表打分
         h = self.embed_tokens(inputs)
-        mask = causal_mask(h.shape[1], h.shape[1], inputs.dtype)  # ?
+        mask = causal_mask(h.shape[1], h.shape[1], inputs.dtype)
 
         for layer in self.layers:
-            h = layer(h, mask)
+            h = layer(h, mask)  # (B, L, E) -> (B, L, E)
 
-        x = self.norm(h)
-        return self.lm_head.as_linear(x)
+        x = self.norm(h)  # (B, L, E) -> (B, L, E)
+        return self.lm_head.as_linear(x)  # (B, L, E) -> (B, L, V)

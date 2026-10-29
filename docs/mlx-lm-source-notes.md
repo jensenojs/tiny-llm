@@ -525,3 +525,17 @@ Task 3 要装配的 `Qwen3MultiHeadAttention` 就是 qwen3.py 这份 `__init__` 
 ## 对 Task 3 的直接用处
 
 装配顺序可以照这份源码的字段顺序对：`ModelArgs` 的字段清单就是你 `__init__` 要取的数；`Qwen3Model.__init__` 的三样对应你的 embed / layers / norm；`Model` 的 tie 分支对应你的出口投影。装配中遇到的每个字段名都能在文件地图里找到行号，拿不准某个字段是什么时，回到源码看它的构造参数比猜形状可靠。
+
+## 分词侧: 三层栈与 generate 的周边契约
+
+模型侧（上文全部内容）只负责"token id 数组 → 词表打分"。从字符串到 id、从 id 回到屏幕的字，是另一条栈，三层，上两层是第三方：
+
+**第一层: HF transformers 的 tokenizer**（`transformers/tokenization_utils_base.py`）。词表的本质是固定表：第 i 行是一段字节序列（或 Unicode 片段），id 就是行号，与 token 严格一对一。`encode(text)` 是 文本 → 行号数组。关键参数 `add_special_tokens`（默认 True）：为 True 时分词器自动在序列头尾补上该模型训练期约定的特殊标记（`build_inputs_with_special_tokens` 决定补什么，BERT 补 `[CLS]...[SEP]`，Llama 系补 `<s>...</s>`）。这是"裸句子直接喂模型"时代的惯例——训练时每条序列都带壳，推理也要补同样的壳。模型对话壳（Qwen 的 `<|im_start|>` 那套）不在此列：它由 chat template 渲染（`apply_chat_template` 把 messages 列表套进模型自带的 jinja 模板），`add_generation_prompt=True` 让渲染停在"该 assistant 说话"的起跑线。两层壳的分工：template 管对话结构，special tokens 管单序列包裹——chat 场景 template 已含壳，encode 必须 `add_special_tokens=False`，否则双层。
+
+**第二层: mlx_lm 的 TokenizerWrapper**（`tokenizer_utils.py:287`）。一个双面壳：`__getattr__` 把 `detokenizer` 以外的属性访问转发给第一层，所以 `tokenizer.encode` / `.eos_token_id` 能直接用但都是借来的。`.detokenizer` 是 `@property`，每次访问都 `return self._detokenizer_class(self)` 造一个全新对象（`tokenizer_utils.py:450`）——这是生成循环里"必须 bind 一次全程复用"的根源。
+
+**第三层: 流式 detokenizer**（`NaiveStreamingDetokenizer`）。模型一次吐一个 id，而一个 token 的字节内容可以是不完整的字符片段（"你" 的 UTF-8 `E4 BD A0` 可能切成两个 token）。流式解码器攒着已收的 token，每次对累计序列整体 decode、与上次结果做 diff，新长出的完整文本段放 `last_segment`；只补了半个字时 diff 为空，继续攒。这个"重解码 diff"手法不依赖"已解码文本是后续文本前缀"的性质——字节级 BPE 词表有此性质，SentencePiece 类吞空格的词表没有，手法照样工作。有状态导致的纪律：循环外 bind 一次；每步 `add_token` 后 `last_segment` 非空才 print；退出前 `finalize()` 把缓冲的尾巴冲出来。
+
+**EOS 与生成的退出**。EOS（Qwen3 `<|im_end|>`，id 151645）是词表里的普通一行，模型训练时学过"话说完输出它"。生成循环每步 sampler 从全词表挑一个 id，挑中 EOS 即模型宣告结束；`max_tokens` 是防复读的保险丝。生成时新 EOS 不喂 detokenizer（否则屏幕出现 `<eos>` 字样）；prompt 中已有的 EOS 是上下文，不触发退出——所以 EOS 判定只对**新生成**的 id 做。
+
+一条方法论注记：以上契约的正主是这三层源码与 docstring，测试用例（`tests_refsol/test_week_1_day_6.py`）只是把契约编成可执行的剧本。从测试反推契约是面向测试编程；从源码/docstring 读契约、用测试验收，才是正路。
