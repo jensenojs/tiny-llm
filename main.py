@@ -181,6 +181,35 @@ with mx.stream(mx.gpu if args.device == "gpu" else mx.cpu):
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": args.prompt},
     ]
+    # 这一行的调用链, 按调用顺序. 光标停在路径上, gF / gd 直接跳.
+    # tokenize=False: 只渲染, 编码留给下游的 simple_generate.
+    #
+    # mlx_lm/tokenizer_utils.py:335  TokenizerWrapper.apply_chat_template
+    #   ├─ mlx_lm/tokenizer_utils.py:336  enable_thinking 已传入, 不覆盖默认
+    #   ├─ mlx_lm/tokenizer_utils.py:339  self._chat_template is None → 跳过 mlx 自带实现
+    #   └─ mlx_lm/tokenizer_utils.py:346  转给 HF
+    #      └─ transformers/tokenization_utils_base.py:3002  PreTrainedTokenizerBase.apply_chat_template
+    #         ├─ transformers/tokenization_utils_base.py:3098  get_chat_template
+    #         │  └─ transformers/tokenization_utils_base.py:3281  ← self.chat_template, 来自 JSON 的 chat_template 字段
+    #         │     实体: <tok.name_or_path>/tokenizer_config.json 的 "chat_template"
+    #         │     tok.name_or_path = ~/.cache/huggingface/hub/models--Qwen--Qwen3-0.6B-MLX-4bit/snapshots/
+    #         ├─ transformers/tokenization_utils_base.py:3121  render_jinja_template
+    #         │  └─ transformers/utils/chat_template_utils.py:498  render_jinja_template
+    #         │     ├─ transformers/utils/chat_template_utils.py:419  _compile_jinja_template
+    #         │     │  └─ transformers/utils/chat_template_utils.py:425  _cached_compile_jinja_template
+    #         │     │     ├─ jinja2/environment.py:618   Environment._parse → AST
+    #         │     │     ├─ jinja2/environment.py:1092  Environment.from_string → Template
+    #         │     │     └─ jinja2/environment.py:682   Environment._generate
+    #         │     │        └─ jinja2/compiler.py:300   CodeGenerator → Python 源码 → exec
+    #         │     └─ transformers/utils/chat_template_utils.py:581  compiled_template.render
+    #         │        └─ jinja2/environment.py:1275  Template.render
+    #         │           └─ jinja2/environment.py:1291  concat(self.root_render_func(ctx))  ← 真干活
+    #         ├─ transformers/tokenization_utils_base.py:3135  if tokenize → False, 跳过
+    #         └─ transformers/tokenization_utils_base.py:3176  return rendered_chat
+    #
+    # root_render_func 是上面 exec 出来的函数, 逐段 yield 字面量. 想看它:
+    #   ImmutableSandboxedEnvironment().compile(template, raw=True)
+    # <|im_start|>/<|im_end|> 是模板里的字面量, 渲染只负责原样吐出.
     prompt = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
