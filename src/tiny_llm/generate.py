@@ -100,8 +100,10 @@ def simple_generate(
             "model",
             f"{_what:<8} in={tuple(y.shape)}  {y.dtype}  dtype {_dtype}  len {_len}",
         )
+
         logits = model(y)  # (1, S) -> (1, S, vocab) # 每个位置为词表打分
         logits = logits[:, -1, :]  # only keep the last one
+
         # 出口是 logits: 形状 (1, vocab), 每个词表位置一个原始打分.
         #   它是分数不是概率: 有正有负, 总和不为 1, 大小只用于比较先后.
         # 三个量一起读, 比单看 top1 有用:

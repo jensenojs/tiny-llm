@@ -539,3 +539,91 @@ Task 3 要装配的 `Qwen3MultiHeadAttention` 就是 qwen3.py 这份 `__init__` 
 **EOS 与生成的退出**。EOS（Qwen3 `<|im_end|>`，id 151645）是词表里的普通一行，模型训练时学过"话说完输出它"。生成循环每步 sampler 从全词表挑一个 id，挑中 EOS 即模型宣告结束；`max_tokens` 是防复读的保险丝。生成时新 EOS 不喂 detokenizer（否则屏幕出现 `<eos>` 字样）；prompt 中已有的 EOS 是上下文，不触发退出——所以 EOS 判定只对**新生成**的 id 做。
 
 一条方法论注记：以上契约的正主是这三层源码与 docstring，测试用例（`tests_refsol/test_week_1_day_6.py`）只是把契约编成可执行的剧本。从测试反推契约是面向测试编程；从源码/docstring 读契约、用测试验收，才是正路。
+
+### Day 6 排障沉淀: 前缀稳定性与 last_segment 的设计评审
+
+真机排障（生成循环静默无输出）撞出来的评审，单独立节。
+
+**现场证据**。循环内 `if detokenize.last_segment:` 恒假，而探针在 `add_token` 后立刻读同一属性却有值：连读两次，第一次 `'A'`，第二次 `''`。`last_segment`（`tokenizer_utils.py:53` 一带）是 property，行为是取件——返回"上次读取以来新长出的文本"，并把内部 offset 推进到当前全文长度。读取即消费。
+
+**前缀稳定性**。增量输出方案（双指针 + hold-back）要成立，条件一条：decode(前 k 个 token) 的结果永远是 decode(追加后) 结果的字符串前缀——已提交的文本安全，新文本只从边界往后长。纯拼接解码器满足它，此时增量方案比全量重解码便宜，是更优解。
+
+**击穿机制**。两类真实存在的破坏。一是解码侧对整段做全局后处理（连续空白折叠、首尾 strip、归一化）：已提交的尾部空白可能被下一次折叠吞掉，"会不会合并"取决于还没来的 token，局部规则防不住。二是 Unicode 组合结构（组合音符、emoji ZWJ 序列）：字符串层面保前缀，渲染层面改写已上屏内容，而上屏提交的是渲染效果。要 hold-back 住这两类，规则必须知道 scheme 的完整改写清单——押尾部空白、押组合符、押半个字，每条都是 scheme 专属知识，通用解码器拿不到。
+
+**三条路线**。固定窗口延迟：押 N 个 token 再放，赌"改写穿透不超过 N"——组合链理论无界，这是个赌注。全量重解码 + diff：每圈对累计 token 整体 decode，放出来的段是"已稳定前缀"的新边界，O(n²) 买 scheme 无关的正确性，mlx_lm 选它（`NaiveStreamingDetokenizer`）。放弃流式：省的是字节处理的零头（相对模型 forward 可忽略），付的是整段生成完才见字——流式的收益在延迟体验，这笔账不划算。diff 本身就是延迟输出的自适应版：同样押着不放，押到"下一次解码认证"为止，窗口由计算得出，无需赌注。
+
+**scheme 不稳定与段级稳定不矛盾**。前缀稳定性是方案级的静态承诺（任何 k 都保前缀）；diff 认证的是段级的逐步事实（此刻的已提交边界安全）。不稳定方案下每步照样能算出当前安全边界——算这个边界正是 diff 的工作。
+
+**认证保守，交付一次**。pop 发的是认证产物：diff 证明不会再被改写的段才交出去，交出即推进 offset，绝不收回。与 socket `read()` 同款协议。pop 的收益是状态放置——"交付到哪"的账本集中在解码器内部，消费者免记账；单消费者场景收益有限，多消费者时它防重复消费。
+
+**设计判决**。pop 语义合法（流式交付的标准协议）；包装违法——property 壳 + 字段名（`last_segment` 听着像躺在那的值）卖取件行为，三重错位。同族协议里交付动作都用动词命名（`next()`、`read()`）。改进形状：`next_segment()` 方法名，或同时提供 peek。调用方契约：读一次、存变量、判空与打印都用变量。
+
+**mock 盲区**。`FakeDetokenizer.last_segment` 是普通字段（peek 语义），测试绿只能证明调用方与假货一致，证明不了假货与真货一致。凡是 mock 这一课通用：mock 复刻接口形状，语义契约要对源码核。
+
+### 对话模板: apply_chat_template 的四层与模板原文
+
+分词器把字符串变成 id 之前，还有一步：把 `messages` 列表渲染成一段带角色标记的文本。这一步由模型自带的 jinja 模板完成，代码在 transformers 里，模板文本在模型目录里。两处分开找。
+
+**调用点**（`main.py:162-167`）：
+
+```python
+prompt = tokenizer.apply_chat_template(
+    messages,
+    tokenize=False,
+    add_generation_prompt=True,
+    enable_thinking=args.enable_thinking,
+)
+```
+
+三个参数的语义：`tokenize=False` 返回渲染后的字符串（True 会顺手 encode，返回 id 数组，此时它自己处理 `add_special_tokens=False`，避免模板壳与特殊标记叠两层）；`add_generation_prompt=True` 让渲染停在 assistant 该说话的起跑线上，模板末尾补 `<|im_start|>assistant\n`；`enable_thinking` 只是作为变量传进模板，由模板里的条件分支决定要不要吐思维链的开头标记。
+
+**四层调用链**（路径相对 `.venv/lib/python3.10/site-packages`）：
+
+1. `transformers/tokenization_utils_base.py:3002`：`PreTrainedTokenizerBase.apply_chat_template`，入口。
+2. 同文件 `:3098`：`chat_template = self.get_chat_template(chat_template, tools)`，取模板文本。
+3. 同文件 `:3238`：`get_chat_template`。默认读 `tokenizer_config.json` 的 `chat_template` 字段；也可以按名字取 repo 里单独的模板文件。
+4. `transformers/utils/chat_template_utils.py:498`：`render_jinja_template`。`:489-495` 建 `ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True, ...)`，把模板字符串编译成 jinja 模板，再把 `messages`、`add_generation_prompt`、`enable_thinking` 作为变量渲染。`immutable` 禁止模板改环境，`sandboxed` 限制可调用的函数——模板来自模型仓库，属于不可信输入。
+
+**模板文本在哪**。不在 Python 包里，在模型快照目录：
+
+```
+~/.cache/huggingface/hub/models--Qwen--Qwen3-0.6B-MLX-4bit/snapshots/173234aa840d113125e9f2271100ddbaf16c9620/tokenizer_config.json
+```
+
+字段 `chat_template`，约 4100 字符。同目录另外两个文件容易混：`tokenizer.json` 是 fast tokenizer 的序列化产物（词表、合并规则、特殊 token 表），`vocab.json` 与 `merges.txt` 是同一份词表的旧格式表示。三者都不是模板。
+
+读原文：
+
+```bash
+python3 -c "import json,glob;print(json.load(open(glob.glob('$HOME/.cache/huggingface/hub/models--Qwen--Qwen3-0.6B-MLX-4bit/snapshots/*/tokenizer_config.json')[0]))['chat_template'])"
+```
+
+**模板结构**。按顺序四段：`tools` 存在时先写一个 system 壳并展开工具签名（`<tools>` 里每个工具 `| tojson` 一行）；然后写 system 消息（`messages[0].role == 'system'` 才写）；再按 `for message in messages` 循环写 user/assistant 段，每段 `<|im_start|>{role}\n{content}<|im_end|>\n`；最后 `add_generation_prompt` 为真时补 `<|im_start|>assistant\n`；`enable_thinking` 显式为 false 时再补一个空的 `<think>\n\n</think>\n\n` 块——形状上思维链已开已闭，解码从闭标记之后接着写，模型直接作答。标记是 `<think>`，不是 `<|think|>`。原文（79-84 行）：
+
+```jinja
+{%- if add_generation_prompt %}
+    {{- '<|im_start|>assistant\n' }}
+    {%- if enable_thinking is defined and enable_thinking is false %}
+        {{- '<think>\n\n</think>\n\n' }}
+    {%- endif %}
+{%- endif %}
+```
+
+中间还有一个预处理段（17-23 行）：倒序扫 messages 找最近的真正用户提问下标，存进 `namespace`。判据是 role 为 user 且内容不含 `<tool_response>`；多步工具回合里包着工具返回的 user 段不算新提问。后面 assistant 段的 `<think>` 保留与否按这个下标切。开头一段工具分支的原文：
+
+```jinja
+{%- if tools %}
+    {{- '<|im_start|>system\n' }}
+    {%- if messages[0].role == 'system' %}
+        {{- messages[0].content + '\n\n' }}
+    {%- endif %}
+    {{- "# Tools\n\nYou may call one or more functions to assist with the user query..." }}
+    {%- for tool in tools %}
+        {{- "\n" }}
+        {{- tool | tojson }}
+    {%- endfor %}
+```
+
+读 jinja 只需要认三种记号：`{% ... %}` 是控制流（if/for），`{{ ... }}` 是取值输出，`{%-` 与 `-}}` 是修剪标记，把该标记两侧的空白（换行、缩进）吃掉。模板作者靠修剪标记让输出既好读又不带多余空行——`trim_blocks=True` 与 `lstrip_blocks=True` 是环境级默认，模板内的局部 `-` 覆盖它。模板输出的每个字符都进入编码；多一个换行就多一份待编码的字符，是否独立成一个 token 由合并规则决定。
+
+模板本体逐行拆解读留待需要时再做，本节只把位置、层数、参数语义和读取方式固定下来。
