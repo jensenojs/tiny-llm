@@ -1,3 +1,5 @@
+import sys
+
 import mlx.core as mx
 from mlx_lm.tokenizer_utils import TokenizerWrapper
 from .qwen3_week1 import Qwen3ModelWeek1
@@ -70,7 +72,14 @@ def simple_generate(
     #     _step([1..6,7,8]) ...
     #   Day 3 的 L/S 对齐规则 (j <= i + (S-L)) 保证 decode 步掩码形同虚设。
 
+    _calls = [0]
+
     def _step(model, y):
+        _calls[0] += 1
+        print(
+            f"[probe] forward {_calls[0]}  ids={y.dtype}  len={y.shape[-1]}",
+            file=sys.stderr,
+        )
         y = y[None, :]  # (S, ) -> (1, S), 模型约定吃 batch 维
         logits = model(y)  # (1, S) -> (1, S, vocab) # 每个位置为词表打分
         logits = logits[:, -1, :]  # only keep the last one
