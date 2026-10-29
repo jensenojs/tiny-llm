@@ -1,8 +1,6 @@
-import sys
-
 import mlx.core as mx
 from .basics import linear, silu
-from .attention import scaled_dot_product_attention_grouped, causal_mask
+from .attention import scaled_dot_product_attention_grouped
 from .layer_norm import RMSNorm
 from .positional_encoding import RoPE
 from typing import Any
@@ -360,14 +358,13 @@ class Qwen3ModelWeek1:
         #   → norm    (B, L, E)     最后一次 RMSNorm
         #   → lm_head (B, L, V)     每个位置对词表打分
         h = self.embed_tokens(inputs)
-        mask = causal_mask(h.shape[1], h.shape[1], inputs.dtype)
-        print(
-            f"[probe] mask={mask.dtype}  zeros/row={(mask == 0).sum(axis=1)[:6].tolist()}",
-            file=sys.stderr,
-        )
 
+        # 掩码不在这里造. 它要加进的是 attention 内部的 scores, 而 scores 的
+        # dtype 只有造它的那一侧知道 —— 这里传 "causal", 由 attention.py 现造.
+        # (出口形状: (L, S), 0 允许看, -inf 禁止; 行是"谁在看", 列是"能看谁"。
+        #  这一版 L = S = 句子长度, 所以是方阵, 第 i 行放行 i+1 列。)
         for layer in self.layers:
-            h = layer(h, mask)  # (B, L, E) -> (B, L, E)
+            h = layer(h, "causal")  # (B, L, E) -> (B, L, E)
 
         x = self.norm(h)  # (B, L, E) -> (B, L, E)
         return self.lm_head.as_linear(x)  # (B, L, E) -> (B, L, V)
