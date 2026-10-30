@@ -53,10 +53,12 @@ def simple_generate(
     #
     #   一个 token 不一定是完整的字 (例: "你" 的 UTF-8 是 3 字节 E4 BD A0,
     #   可能被切成 E4 BD + A0 两个 token)。逐 id decode 直接打, 屏幕上全是碎片。
-    #   流式解码器不逐 token 解码, 而是"重解码 diff": 每次对攒过的全部 token
-    #   整体 decode, 新长出来的文本段 (last_segment) 才放出来; 只补了半个字
-    #   时 last_segment 为空, 继续攒。全量重解码对任何词表方案都成立;
-    #   想改成双指针增量 (只 decode 新增 token) 才需要前缀稳定性。
+    #   Qwen3 实际用的是 BPEStreamingDetokenizer (load 时按 tokenizer.json 的
+    #   decoder 类型选定): 每个 id 查 tokenmap 得到字符串, 攒进 _unflushed,
+    #   还原成字节后能解出完整字符才并入 text; 只补了半个字时 text 不变,
+    #   last_segment 为空, 继续攒。它不调 HF 的 decode, 也不重解码。
+    #   "每次对攒过的全部 token 整体 decode" 是 NaiveStreamingDetokenizer 的做法,
+    #   词表不是 BPE/SPM 时才落到它。
     #   它有状态, 由此三个纪律:
     #     1. tokenizer.detokenizer 这个 @property 每次访问都造全新对象
     #        (tokenizer_utils.py:450) → 循环外 bind 一次, 全程复用同一个
@@ -102,7 +104,7 @@ def simple_generate(
         )
 
         logits = model(y)  # (1, S) -> (1, S, vocab) # 每个位置为词表打分
-        logits = logits[:, -1, :]  # only keep the last one
+        logits = logits[:, -1, :]  # only keep the last one, wastes!
 
         # 出口是 logits: 形状 (1, vocab), 每个词表位置一个原始打分.
         #   它是分数不是概率: 有正有负, 总和不为 1, 大小只用于比较先后.
@@ -145,6 +147,21 @@ def simple_generate(
         logprobs = (
             logits - m - mx.log(mx.sum(mx.exp(logits - m), axis=-1, keepdims=True))
         )
+        """
+logits → logprobs → 新 id: 减 m 不改排序, exp 后和为 1; temp=0 的 sampler 就是 argmax.
+
+.venv/bin/python debug_repl.py
+ids = mx.array(tokenizer.encode(prompt, add_special_tokens=False))[None, :]
+lg = model(ids)[:, -1, :]
+m = mx.max(lg, axis=-1, keepdims=True)
+lp = lg - m - mx.log(mx.sum(mx.exp(lg - m), axis=-1, keepdims=True))
+print(f"logits 范围        : [{lg.min().item():.2f}, {lg.max().item():.2f}]  (分数, 可正可负)")
+print(f"exp(logprobs) 之和 : {mx.exp(lp).sum().item():.4f}  (概率, 和为 1)")
+print(f"argmax(logits)     : {mx.argmax(lg, -1).item()}")
+print(f"argmax(logprobs)   : {mx.argmax(lp, -1).item()}  (同上: 平移不改排序)")
+print(f"sampler(logprobs)  : {sampler(lp).item()}  (temp=0 → argmax)")
+print(f"新 id 的 dtype     : {mx.argmax(lp, -1).dtype}")
+"""
         nxt = mx.argmax(logprobs, axis=-1) if sampler is None else sampler(logprobs)
         stage(6, "sampler", f"{'argmax' if sampler is None else 'fn'} → {nxt.item()}")
         return nxt
@@ -170,28 +187,45 @@ def simple_generate(
     #           模板一变它就变; 硬判据是站 2 的 roundtrip.
     # 打印走 stderr: stdout 是被测对象 (生成的文本), 观测不能混进被测的通道.
     stage(1, "prompt", f"chars={len(prompt)}  tail={prompt[-28:]!r}")
-    # ── 站 2: 字符串 → id 数组 ────────────────────────────────────────
-    # encode 做的事是查表: 词表每一行是一段字节, id 就是行号.
-    # 所以 id 数组 = 这串文本在词表里的行号序列, 每个整数没有任何数值含义,
-    # 它只是"第几行". 行号相邻不代表内容相近.
-    #
-    # 判据:
-    #   n         长度. 必须非零, 且和模板拼出来的长度对得上 (这里 33).
-    #   roundtrip decode(encode(prompt)) == prompt. 站 2 唯一的结构判据:
-    #             文本 → id → 文本能原样回来, 说明查表没丢字、没多壳.
-    #             对不上时, 先查 add_special_tokens 和模板, 后面全部不用看.
-    #
-    # mlx_lm/tokenizer_utils.py:465  __getattr__ → getattr(self._tokenizer, "encode")
-    #   └─ transformers/tokenization_utils_base.py:2254  Qwen2Tokenizer.encode
-    #      └─ transformers/tokenization_utils_base.py:2291  self._encode_plus(...)
-    #         └─ transformers/tokenization_utils_tokenizers.py:857  TokenizersBackend._encode_plus
-    #            └─ transformers/tokenization_utils_tokenizers.py:959  self._tokenizer.encode_batch(...)
-    #               └─ transformers/models/qwen2/tokenization_qwen2.py:61  断点: 再往下是 Rust
-    #                  encode_batch 是 method_descriptor (PyO3), 没有 Python 实现可跳.
-    #                  行为由这一行组装决定: BPE + ByteLevel + NFC + Regex pre_tokenizer, 到 :86.
-    #
-    # 两次 _tokenizer 不是同一个对象: 上面那层是 Qwen2Tokenizer (Python),
-    # 最下面那层是 tokenizers.Tokenizer (Rust).
+    """
+── 站 2: 字符串 → id 数组 ────────────────────────────────────────
+encode 做的事是查表: 词表每一行是一段字节序列 (tokenizer.json 里用 GPT-2 的字节→字符映射写成字符串), id 就是行号.
+所以 id 数组 = 这串文本在词表里的行号序列, 每个整数没有任何数值含义,
+它只是"第几行". 行号相邻不代表内容相近.
+
+判据:
+  n         长度. 必须非零, 且和模板拼出来的长度对得上 (这里 33).
+  roundtrip decode(encode(prompt)) == prompt. 站 2 唯一的结构判据:
+            文本 → id → 文本能原样回来, 说明查表没丢字、没多壳.
+            对不上时, 先查 add_special_tokens 和模板, 后面全部不用看.
+
+调用这一行时:
+mlx_lm/tokenizer_utils.py:457  TokenizerWrapper.__getattr__
+  (TokenizerWrapper 自己没有 encode; :465 getattr(self._tokenizer, "encode"), self._tokenizer 是 Qwen2Tokenizer)
+  └─ transformers/tokenization_utils_base.py:2254  PreTrainedTokenizerBase.encode
+     └─ transformers/tokenization_utils_base.py:2291  self._encode_plus(...)
+        └─ transformers/tokenization_utils_tokenizers.py:857  TokenizersBackend._encode_plus
+           ├─ transformers/tokenization_utils_tokenizers.py:959  self._tokenizer.encode_batch(...)
+           │  这里的 self._tokenizer 是 tokenizers.Tokenizer (Rust), encode_batch 是 method_descriptor, 没有 Python 源码可跳
+           └─ transformers/tokenization_utils_tokenizers.py:966  _convert_encoding, 把 Rust 的 Encoding 转回 Python 的 dict
+
+Rust 那一侧的行为在 load 时组装好:
+transformers/models/qwen2/tokenization_qwen2.py:61  self._tokenizer = Tokenizer(BPE(...))
+  (:73 ByteLevel decoder; :74 NFC normalizer; :75 Regex + ByteLevel pre_tokenizer)
+  词表与合并规则随后从 tokenizer.json 载入.
+
+两次 _tokenizer 不是同一个对象: 上面那层是 Qwen2Tokenizer (Python),
+最下面那层是 tokenizers.Tokenizer (Rust).
+
+.venv/bin/python debug_repl.py
+ids = tokenizer.encode(prompt, add_special_tokens=False)
+print(f"id 个数        : {len(ids)}")
+print(f"前 6 个 id     : {ids[:6]}")
+print(f"roundtrip      : {tokenizer.decode(ids) == prompt}")
+print(f"上层 _tokenizer: {type(tokenizer._tokenizer).__name__}")
+print(f"底层 _tokenizer: {type(tokenizer._tokenizer._tokenizer)}")
+print(f"encode_batch   : {type(type(tokenizer._tokenizer._tokenizer).encode_batch).__name__}  (Rust, 无 Python 源码)")
+"""
     tokens = tokenizer.encode(prompt, add_special_tokens=False)
     _base[0] = len(tokens)
     # 观测不能要求被测对象多实现一个方法: 假 tokenizer 只有 encode.
@@ -199,6 +233,38 @@ def simple_generate(
     _rt = (_decode(tokens) == prompt) if _decode else None
     _tail = repr(_decode(tokens[-3:])) if _decode else None
     stage(2, "encode", f"n={len(tokens)}  roundtrip={_rt}  tail={_tail}")
+    """
+load 时决定用哪个解码器:
+mlx_lm/tokenizer_utils.py:605  _is_bpe_decoder(tokenizer.json 的 decoder) → BPEStreamingDetokenizer
+mlx_lm/tokenizer_utils.py:451  TokenizerWrapper.detokenizer  每次访问都 new 一个
+  └─ mlx_lm/tokenizer_utils.py:165  BPEStreamingDetokenizer.__init__
+     (:169-171 vocab 反过来存成 tokenmap[id] = 字符串; :177 make_byte_decoder)
+     ├─ transformers/tokenization_utils_tokenizers.py:609  vocab → :606 Rust get_vocab, 151669 条
+     │  数据本体: <tok.name_or_path>/tokenizer.json 的 model.vocab (151643) + added_tokens (26)
+     └─ mlx_lm/tokenizer_utils.py:229  make_byte_decoder  GPT-2 的 替代字符 → 字节 表
+
+tokenmap 每一行是字符串, 每个字符代表一个字节: 可打印 ASCII 原样, 其余换成替代字符.
+  tokenmap[32]   = 'A'
+  tokenmap[8162] = 'ĠApple'    Ġ 是空格字节 (_byte_decoder['Ġ'] == 32)
+
+词表的前 256 行是单字节 ('!'=0, ..., 'A'=32), 后面 15 万行是 BPE 训练时把语料里
+最常相邻的两段反复合并出来的, 编号按合并先后. 常见词因此整词成行, 而且大小写、
+前面有没有空格都算不同的行; 训练后出现的新词不加行, 用已有片段拼:
+  'Apple'     [26567]              ['Apple']
+  ' Apple'    [8162]               ['ĠApple']
+  'apple'     [22377]              ['apple']
+  ' ChatGPT'  [12853, 38, 2828]    ['ĠChat', 'G', 'PT']
+  '你好'      [108386]             ['ä½łå¥½']    6 个 UTF-8 字节合成 1 行
+词表大小训练前就定死, 因为 embed_tokens.weight 的行数和它绑在一起; 最坏退回单字节,
+所以任何文本都能编码, 代价是生僻词占的 token 多.
+
+.venv/bin/python debug_repl.py
+print(f"{'文本':10}  {'ids':20}  tokenmap 里的字符串")
+for w in ['Apple', ' Apple', 'apple', ' ChatGPT', '你好']:
+    ids = tokenizer.encode(w, add_special_tokens=False)
+    print(f"{w!r:12}  {str(ids):20}  {tokenizer.convert_ids_to_tokens(ids)}")
+
+"""
     detokenize = tokenizer.detokenizer
     detokenize.reset()  # 解码器带状态, 复用前先归零
     tokens = mx.array(tokens)
@@ -210,6 +276,19 @@ def simple_generate(
     # prefill: 第一个 token
     nxt = _step(model, tokens)
     tokens = mx.concatenate([tokens, nxt])
+    """
+拼回句尾: argmax 产出 uint32, 和 int32 的 ids 拼接后类型提升成 int64 (Bug2 的入口).
+句尾 dtype 漂移本身不报错, 掩码若借 inputs.dtype 造就会把 -inf 铸成整数.
+
+.venv/bin/python debug_repl.py
+ids = mx.array(tokenizer.encode(prompt, add_special_tokens=False))
+nxt = mx.argmax(model(ids[None, :])[:, -1, :], axis=-1)
+cat = mx.concatenate([ids, nxt])
+print(f"ids          : {ids.dtype}  长度 {ids.shape[0]}")
+print(f"nxt (argmax) : {nxt.dtype}  值 {nxt.item()}")
+print(f"拼接后       : {cat.dtype}  长度 {cat.shape[0]}  (int32 + uint32 → int64)")
+print(f"-inf 铸 int64: {mx.array([float('-inf')]).astype(mx.int64).item()}  (屏蔽值变成 0)")
+"""
 
     # decode: prefill 的产物也是新 token, 它的 add_token/判 EOS 在循环第一圈做
     # (每圈处理一个已生成 token 再产下一个, 故圈数 = max_tokens)
@@ -219,6 +298,35 @@ def simple_generate(
             break
         _ch = repr(_decode([nxt.item()])) if _decode else None
         stage(7, "new id", f"{nxt.item()} = {_ch}")
+        """
+每生成一个 id:
+mlx_lm/tokenizer_utils.py:206  BPEStreamingDetokenizer.add_token
+  (:208 tokenmap[token] 查表得字符串; :209 追加进 _unflushed)
+  ├─ mlx_lm/tokenizer_utils.py:185  _decode_bytes  逐字符查 _byte_decoder 还原字节, 再按 utf-8 解码
+  └─ mlx_lm/tokenizer_utils.py:195  _maybe_trim_space
+  (:214 结尾是 \\ufffd 或单个空格时先不定稿; 否则 :217 并入 self.text)
+mlx_lm/tokenizer_utils.py:52  StreamingDetokenizer.last_segment  text[self.offset:], 然后水位抬到 len(text)
+
+模型输出的单位是 token, 屏幕显示的单位是字符, 两者边界不一定对齐.
+例: 🦙 的 UTF-8 是 4 字节 F0 9F A6 99, 分词器把它拆进了 3 个 token:
+  id      tokenmap   代表的字节     _unflushed     last_segment
+  11162   'ĠðŁ'      20 F0 9F       'ĠðŁ'          ''        字节不全, 不定稿
+  99      '¦'        A6             'ĠðŁ¦'         ''
+  247     'Ļ'        99             ''             '🦙'      凑齐, 并入 text
+  5394    'Ġok'      20 6F 6B       ''             ' ok'     本身完整, 直接放出
+每来一个 id 就单独解码打印的话, 前三步屏幕上是三个 '�', 🦙 永远不出现.
+add_token 把字节攒在 _unflushed, 解码结尾仍是 \\ufffd 就不写进 text; text 因此只增不改,
+last_segment 才能放心按水位往后切. 开头空格消失是另一件事: 这是整段输出的第一个
+字符, :200-201 在 text 为空时去掉前导空格.
+
+.venv/bin/python debug_repl.py
+d = tokenizer.detokenizer
+print(f"{'id':>6}  {'tokenmap':10}  {'_unflushed':12}  last_segment")
+for i in tokenizer.encode(" 🦙 ok", add_special_tokens=False):
+    d.add_token(i)
+    print(f"{i:>6}  {d.tokenmap[i]!r:10}  {d._unflushed!r:12}  {d.last_segment!r}")
+
+"""
         detokenize.add_token(nxt.item())
         segment = detokenize.last_segment  # 读一次即消费一次, 存下来复用
         stage(
