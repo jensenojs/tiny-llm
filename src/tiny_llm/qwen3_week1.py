@@ -353,12 +353,11 @@ class Qwen3ModelWeek1:
         self,
         inputs: mx.array,
     ) -> mx.array:
-
         # ── 这一次调用里各个量的形状 ────────────────────────────────
-        #   B  batch                1
-        #   L  本步发问的 token 数     这一版恒等于 S (每步把整句重跑一遍)
-        #   S  能看见的历史长度        这一版恒等于 L; KV 版 decode 时 L=1, S=历史长
-        #   E  hidden_size          0.6B 是 1024
+        #   B  batch                 1
+        #   L  本步发问的 token 数   这一版恒等于 S (每步把整句重跑一遍)
+        #   S  能看见的历史长度      这一版恒等于 L; KV 版 decode 时 L=1, S=历史长
+        #   E  hidden_size           0.6B 是 1024
         #   V  词表大小              151936
         #
         #   inputs    (B, L)        int32, 行号
