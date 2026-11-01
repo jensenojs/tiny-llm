@@ -2,6 +2,28 @@ import mlx.core as mx
 
 
 class RoPE:
+    """渲染与对账入口, 对应框架那一侧 layers[0].self_attn.rope.
+
+.venv/bin/python debug_repl.py
+from tiny_llm.positional_encoding import RoPE
+import mlx.nn as nn
+mx.random.seed(0)
+x = mx.random.normal((1, 2, 4, 128)).astype(mx.bfloat16)   # (N,H,L,D), nn.RoPE 的轴约定
+a = RoPE(128, 32768, 1000000, False)(x.transpose(0, 2, 1, 3)).transpose(0, 2, 1, 3)
+b = nn.RoPE(128, base=1000000.0, traditional=False)(x)
+print(float(mx.abs(a - b).max()))
+
+渲染:
+0.0
+
+判据: dims=D=128 (每头单独转, 与头数无关), base=theta=1000000,
+表高 seq_len=max_seq_len=32768 钉死预计算表的位置范围, 超出要现算或插值 (外推问题由此而来);
+本实现取 (N,L,H,D), 位置在 L 轴; nn.RoPE 取 (N,H,L,D), 位置在 -2 轴, 对账时必须转置,
+轴约定不同是对账时最容易踩的坑. offset 参数留给 decode (Week2 续写时必须显式传).
+__call__ 内的 cos/sin 表与两种配对注释见方法内. 接缝:
+只转 Q/K, 在 Qwen3MultiHeadAttention.__call__ ③ 打分前; V 不转 (载荷只搬运, 不编码位置).
+"""
+
     def __init__(
         self,
         dims: int,

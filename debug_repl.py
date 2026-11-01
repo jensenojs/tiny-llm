@@ -73,7 +73,6 @@ prompt = tokenizer.apply_chat_template(
     add_generation_prompt=True,
     enable_thinking=False,  # 与 main.py 默认一致, 注释里的例子才对得上
 )
-
 sampler = sampler_module.make_sampler(
     args.sampler_temp, top_p=args.sampler_top_p, top_k=args.sampler_top_k
 )
@@ -83,7 +82,9 @@ with stream:
     model = models.dispatch_model(model_name, mlx_model, week=args.week)
 
 print(f"[debug_repl] loaded {model_name}, week={args.week}")
-print("[debug_repl] bound: mlx_model tokenizer model prompt messages sampler stream simple_generate")
+print(
+    "[debug_repl] bound: mlx_model tokenizer model prompt messages sampler stream simple_generate"
+)
 
 # 不加 -i 直接跑时也停在交互层, 而不是执行完就退出
 if not sys.flags.interactive:
