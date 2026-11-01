@@ -110,6 +110,28 @@ def scaled_dot_product_attention_grouped(
     scale: float | None = None,
     mask: mx.array | str | None = None,
 ) -> mx.array:
+    """打分对账入口: 与 mx.fast.scaled_dot_product_attention 同输入对账 (GQA 广播语义同款).
+
+.venv/bin/python debug_repl.py
+from tiny_llm.attention import scaled_dot_product_attention_grouped
+mx.random.seed(0)
+q = mx.random.normal((1, 16, 5, 128))
+k = mx.random.normal((1, 8, 5, 128))
+v = mx.random.normal((1, 8, 5, 128))
+mask = mx.tril(mx.ones((5, 5)))
+a = scaled_dot_product_attention_grouped(q, k, v, mask=mask)
+b = mx.fast.scaled_dot_product_attention(q, k, v, scale=128**-0.5, mask=mask)
+print(float(mx.abs(a - b).max()))
+
+渲染:
+7.748603820800781e-07
+
+判据: float32 输入下差 1e-6 量级 (两边求和顺序不同); 输出还原 Q 头布局 (…,H_q,L,D);
+H_q % H 必须为 0, 查询头 i 坐 kv 头 i // (H_q // H) (拼车语义见方法内全景图);
+"causal" 掩码在本函数内现造, dtype 取 query 的 (Bug2 的教训, 见下方掩码段注释).
+接缝: 本函数只管打分. 上游 (投影/拆头/归一化/旋转) 在 Qwen3MultiHeadAttention.__call__
+①-④, 下游 (换轴/合头/wo) 在 ⑥-⑦.
+"""
     # ── GQA 全景: 拼车 → 打分 → 掩码 → 加权 ──────────────────────
     #
     #   query (…,H_q,L,D)          key (…,H,S,D)      value (…,H,S,D)
