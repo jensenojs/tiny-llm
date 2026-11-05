@@ -55,6 +55,37 @@ class Qwen3MultiHeadAttention:
         q_norm/k_norm 长 D=128, eps 要与 rms_norm_eps 传成一致 (见 Qwen3ModelWeek1 对账段);
         rope 只吃 D=128, 角度表高 max_seq_len=32768, base=theta=1000000.
 
+        四行形状的顺序读法:
+        1024 -q_proj→ 2048 -切成 16 段×128→ 打分加权 -拼回 2048 -o_proj→ 1024
+        2048 不等于 E, 所以头不是在 1024 上均分 (那样每头 64), 而是在投影后的
+        2048 上切; q_norm 与 rope 的形状都是 128, 正是切完每段的宽度 —— 归一化
+        与旋转都在每段内部独立做. 第 h 个 Q 头配第 h//2 组 K/V.
+        k_proj 输出 1024 = 8×128, 宽度是 q_proj 的一半, 所以只切 8 段.
+
+        维度约束, 三条各管一处:
+        q 的第 h 个头与 k 的第 g 组必须等长 —— 点积逐位相乘求和, 两边都是 D=128;
+        v 的 S 行之间必须等宽 —— 加权求和要把它们叠起来, 宽度记 D_v;
+        v 与 q/k 之间没有约束 —— 打分产出 (L,S) 的标量表, 权重个数由 S 定,
+        与 D_v 无关.
+        本项目三支共用同一个 D (attention.py 的
+        scaled_dot_product_attention_grouped 里 D 只从 query 取), 所以 D_v≠D 会报
+        reshape 错. 那是实现假设: 数学上 v 的宽度可任取, 唯一要闭合的是出口
+        H·D_v = o_proj 的输入宽; K 侧另有一把尺子 KV·D = k_proj 的输出宽,
+        两者互不影响. 2048 与 1024 的差是头数 16 对 8, 每头仍是 128.
+
+        缓存 2·KV·D·2 B = 2×8×128×2 = 4 KiB 每 token 每层; KV 若也取 16 组
+        则是 8 KiB. 省下的一半是相对同 D 的 MHA, 与经典 64 维头的 MHA 相比
+        字节数相同 —— 省的是组数, 不是每组的宽度.
+
+        DeepSeek-V3 的 MLA 动的是另一处: 一次压到低秩, cache 只存
+        kv_lora_rank 512 + qk_rope_head_dim 64 = 576 个数, 与头数无关.
+        MHA 的 2·H·D 随头数增长, 压缩之后这条依赖消失. K 与 V 在解压时才出现:
+        embed_q 把 512 还原成每头的 128 维 (K 的内容部分), unembed_out 还原成
+        每头的 v_head_dim (V). 那 64 维位置键单独一条不走压缩 —— 它要过 RoPE,
+        而 RoPE 作用在头维度上, 压缩表示没有头维度. decode 时连解压都省:
+        把 K 侧的 W_k 用结合律推到 Q 侧、V 侧推到输出侧, 直接拿 512 维 latent
+        打分. 两条路径见 mlx_lm/models/deepseek_v3.py:118-169.
+
         __call__ 内的鸟瞰图与 ①-⑦ 分步见方法内注释. 接缝:
         输入 (B,L,E) 输出 (B,L,E); 输出交给 Qwen3TransformerBlock 的残差加法
         x + attn(input_layernorm(x)). 这里出错, 表现是每一层之后整句都偏.
@@ -1124,13 +1155,45 @@ class Qwen3ModelWeek1:
         self,
         inputs: mx.array,
     ) -> mx.array:
-        # ── 这一次调用里各个量的形状 ────────────────────────────────
-        #   B  batch                 1
-        #   L  本步发问的 token 数   这一版恒等于 S (每步把整句重跑一遍)
-        #   S  能看见的历史长度      这一版恒等于 L; KV 版 decode 时 L=1, S=历史长
-        #   E  hidden_size           0.6B 是 1024
-        #   V  词表大小              151936
+        # ── 这一次调用里各个量的形状与字节数 ────────────────────────────
+        # 常量 (取值来自快照 config.json 的对应字段):
+        #   B  batch                   1       本次几条序列
+        #   L  query 方向 token 数             本步发问几个; 这一版恒等于 S
+        #   S  key/value 方向 token 数         能看见多少历史; KV 版 decode 时 L=1
+        #   E  hidden_size             1024    残差流宽度: 每个 token 一条 E 维向量
+        #   H  num_attention_heads     16      Q 的头数
+        #   KV num_key_value_heads     8       K/V 的头数; 16 个 Q 头共用 8 组 (GQA)
+        #   D  head_dim                128     每头维度
+        #   I  intermediate_size       3072    MLP 中段宽度; I = 3E
+        #   V  vocab_size              151936  词表行数, 也是 lm_head 的输出宽
+        # 两个容易看错的宽度: H·D = 2048 (q_proj 输出, 比 E 宽一倍);
+        #                    KV·D = 1024 (= E, k/v_proj 输出与残差流同宽)
+        # 字节数: bf16 每元素 2 字节, ids 是 int32 每元素 4 字节
         #
+        # 量                    每token   S=22      S=32768
+        # ids (1,S) int32       4         88 B      128 KiB
+        # h  查表 (1,S,E)       2048      44 KiB    64 MiB
+        # q  (1,S,H·D)          4096      88 KiB    128 MiB
+        # k, v 各 (1,S,KV·D)    2048      44 KiB    64 MiB
+        # 加权和 (1,S,H·D)      4096      88 KiB    128 MiB
+        # wo 输出 (1,S,E)       2048      44 KiB    64 MiB
+        # gate, up 各 (1,S,I)   6144      132 KiB   192 MiB
+        # h=gate*up (1,S,I)     6144      132 KiB   192 MiB
+        # mlp 输出 (1,S,E)      2048      44 KiB    64 MiB
+        # logits (1,S,V)        303872    6 MiB     9.3 GiB
+        #
+        # 除 logits 外合计 2048+4096+2048+2048+4096+2048+6144+6144+6144+2048
+        #                 = 36,864 字节/token = 36 KiB/token
+        #
+        # scores 不在本函数里 (在 attention 内部), 峰值由它决定:
+        #   (1,H,S,S) fp32 = 64·S² 字节
+        #   S=22    30 KiB        S=2048   256 MiB        S=32768   64 GiB
+        #   对 S 求导 = 128·S: S=32768 时每多一个 token 多 4 MiB, 是 36 KiB 的 114 倍.
+        #   二次项起来之后, 其余每一项都可以忽略.
+        #
+        # 一个 token 的向量是 E × 2 B = 2 KiB; 64 MiB 是 32768 个 token 的总量.
+        #
+        # 数据流:
         #   inputs    (B, L)        int32, 行号
         #   → 查表    (B, L, E)     每个行号换成一行向量
         #   → 28 层   (B, L, E)     形状不变, 数值被反复改写
