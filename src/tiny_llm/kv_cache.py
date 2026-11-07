@@ -45,10 +45,10 @@ class TinyKvCache(ABC):
         mask_length: int | None = None,
         mask: mx.array | str | None = None,
     ) -> "PagedKvMetadata":
-        pass
+        raise NotImplementedError
 
     def rewind(self, n: int):
-        pass
+        raise NotImplementedError
 
 
 class BatchingKvCache(TinyKvCache):
@@ -101,7 +101,8 @@ class TinyKvFullCache(TinyKvCache):
 
     def _logical_key_values(self) -> tuple[mx.array, mx.array]:
         """Return only initialized tokens, never the unused physical tail."""
-        pass
+        assert self.key_values is not None
+        return self.key_values
 
     def update_and_fetch(
         self,
@@ -110,7 +111,21 @@ class TinyKvFullCache(TinyKvCache):
         mask_length: int | None = None,
         mask: mx.array | str | None = None,
     ) -> tuple[mx.array, mx.array, int, Optional[mx.array]]:
-        pass
+        B, H, S, D = key.shape
+
+        if self.key_values is None:
+            self.key_values = (key, value)
+            self.offset += S
+        else:
+            prev_k, prev_v = self.key_values
+            self.key_values = (
+                mx.concatenate([prev_k, key], axis=2),
+                mx.concatenate([prev_v, value], axis=2),
+            )
+            self.offset += S
+
+        cached_k, cached_v = self.key_values
+        return cached_k, cached_v, self.offset, mask
 
     def materialize(self):
         pass
