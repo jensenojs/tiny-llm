@@ -102,7 +102,13 @@ class TinyKvFullCache(TinyKvCache):
     def _logical_key_values(self) -> tuple[mx.array, mx.array]:
         """Return only initialized tokens, never the unused physical tail."""
         assert self.key_values is not None
-        return self.key_values
+        # if self.uses_capacity:
+        key, value = self.key_values
+        # B, H, S, D (最后那个可以省略)
+        return key[:, :, : self.offset, :], value[:, :, : self.offset]
+        # else:
+        #     # 实际上两者等价
+        #     return self.key_values
 
     def update_and_fetch(
         self,
@@ -113,18 +119,38 @@ class TinyKvFullCache(TinyKvCache):
     ) -> tuple[mx.array, mx.array, int, Optional[mx.array]]:
         B, H, S, D = key.shape
 
-        if self.key_values is None:
-            self.key_values = (key, value)
-            self.offset += S
-        else:
+        if self.uses_capacity:
+            end = self.offset + S
+            if end > self.capacity:
+                raise ValueError("out of capacity")
+            if self.key_values is None:
+                self.key_values = (
+                    mx.zeros((B, H, self.capacity, D), dtype=key.dtype),
+                    mx.zeros((B, H, self.capacity, D), dtype=value.dtype),
+                )
             prev_k, prev_v = self.key_values
-            self.key_values = (
-                mx.concatenate([prev_k, key], axis=2),
-                mx.concatenate([prev_v, value], axis=2),
+            # 两种写法都 ok
+            prev_k = mx.slice_update(
+                prev_k,
+                key,
+                start_indices=mx.array([self.offset], dtype=mx.int32),
+                axes=[2],
             )
+            prev_v[:, :, self.offset : end, :] = value
+            self.key_values = (prev_k, prev_v)
+            self.offset = end
+        else:
+            if self.key_values is None:
+                self.key_values = (key, value)
+            else:
+                prev_k, prev_v = self.key_values
+                self.key_values = (
+                    mx.concatenate([prev_k, key], axis=2),
+                    mx.concatenate([prev_v, value], axis=2),
+                )
             self.offset += S
 
-        cached_k, cached_v = self.key_values
+        cached_k, cached_v = self._logical_key_values()
         return cached_k, cached_v, self.offset, mask
 
     def materialize(self):
