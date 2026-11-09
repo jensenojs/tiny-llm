@@ -130,7 +130,9 @@ class TinyKvFullCache(TinyKvCache):
         if self.uses_capacity:
             end = self.offset + S
             if end > self.capacity:
-                raise ValueError("out of capacity")
+                raise ValueError(
+                    f"KV cache capacity {self.capacity} exceeded by append ending at {end}"
+                )
             if self.key_values is None:
                 self.key_values = (
                     mx.zeros((B, H, self.capacity, D), dtype=key.dtype),
@@ -166,7 +168,17 @@ class TinyKvFullCache(TinyKvCache):
 
     def reset(self):
         """Reset logical length while retaining the allocated chunks."""
-        pass
+        self.offset = 0
 
     def rewind(self, n: int):
-        pass
+        if not isinstance(n, int) or isinstance(n, bool) or not 0 <= n <= self.offset:
+            raise ValueError("rewind length must be between zero and the cache length")
+
+        self.offset -= n
+        if self.uses_capacity:
+            return
+        if self.offset == 0:
+            self.key_values = None
+        else:
+            key, value = self.key_values
+            self.key_values = (key[:, :, : self.offset], value[:, :, : self.offset])
