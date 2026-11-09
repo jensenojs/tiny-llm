@@ -103,8 +103,14 @@ def simple_generate(
             f"{_what:<8} in={tuple(y.shape)}  {y.dtype}  dtype {_dtype}  len {_len}",
         )
 
+        # Week 1 的写法: 整句重算, 算完再把不需要的行扔掉.
+        #   模型内部对 S 个位置都乘了一次 lm_head, 出口只取最后一行,
+        #   前 S-1 行的乘加 (S-1)·E·V 全部白费.
+        #   Week 2 的 simple_generate_with_kv_cache 把切点提前到 lm_head
+        #   之前 (logits_to_keep=1): 先切 h 再乘, 只算这一行.
+        #   两种写法的对比见 qwen3_week2.py 的 Qwen3ModelWeek2.__call__ 尾部.
         logits = model(y)  # (1, S) -> (1, S, vocab) # 每个位置为词表打分
-        logits = logits[:, -1, :]  # only keep the last one, wastes!
+        logits = logits[:, -1, :]  # 只有这一行有用, 前面 S-1 行是白算的
 
         # 出口是 logits: 形状 (1, vocab), 每个词表位置一个原始打分.
         #   它是分数不是概率: 有正有负, 总和不为 1, 大小只用于比较先后.

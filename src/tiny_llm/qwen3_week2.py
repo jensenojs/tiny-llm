@@ -2,6 +2,11 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
+from .attention import scaled_dot_product_attention_grouped
+from .positional_encoding import RoPE
+from .basics import linear, silu
+from .layer_norm import RMSNorm
+
 import mlx.core as mx
 
 from .embedding import Embedding  # noqa: F401 - learner checkpoint dependency
@@ -102,7 +107,25 @@ class Qwen3MultiHeadAttention:
         use_fast_rope: bool = True,
         use_tiled_prefill_attention: bool = False,
     ):
-        pass
+        self.wq = wq
+        self.wk = wk
+        self.wv = wv
+        self.wo = wo
+        self.q_norm = q_norm
+        self.k_norm = k_norm
+        self.theta = theta
+        self.head_dim = head_dim
+        self.num_heads = num_heads
+        self.hidden_size = hidden_size
+        self.max_seq_len = max_seq_len
+        self.num_kv_heads = num_kv_heads
+        self.rms_norm_eps = rms_norm_eps
+        self.rope = RoPE(
+            dims=head_dim, seq_len=max_seq_len, base=theta, traditional=False
+        )
+        self.use_fast_rms_norm = use_fast_rms_norm
+        self.use_fast_rope = use_fast_rope
+        self.use_tiled_prefill_attention = use_tiled_prefill_attention
 
     def __call__(
         self,
@@ -111,7 +134,36 @@ class Qwen3MultiHeadAttention:
         cache: TinyKvCache,
         mask: mx.array | str | None = None,
     ) -> mx.array:
-        pass
+        B, L, _ = x.shape
+
+        q = linear(x, self.wq).reshape(B, L, self.num_heads, self.head_dim)
+        k = linear(x, self.wk).reshape(B, L, self.num_kv_heads, self.head_dim)
+        v = linear(x, self.wv).reshape(B, L, self.num_kv_heads, self.head_dim)
+
+        q = mx.fast.rms_norm(q, self.q_norm, eps=self.rms_norm_eps)
+        k = mx.fast.rms_norm(k, self.k_norm, eps=self.rms_norm_eps)
+
+        if not isinstance(offsets, int):
+            raise NotImplementedError("per-request offsets are a Week 3 concern")
+        pos = slice(offsets, offsets + L)
+
+        q = self.rope(q, pos)
+        k = self.rope(k, pos)
+
+        q = q.transpose(0, 2, 1, 3)
+        k = k.transpose(0, 2, 1, 3)
+        v = v.transpose(0, 2, 1, 3)
+        cache_k, cache_v, seq_len, mask = cache.update_and_fetch(k, v, mask=mask)
+
+        out = scaled_dot_product_attention_grouped(
+            q.astype(mx.float32),
+            cache_k.astype(mx.float32),
+            cache_v.astype(mx.float32),
+            mask=mask,
+        ).astype(x.dtype)
+
+        out = out.transpose(0, 2, 1, 3).reshape(B, L, self.num_heads * self.head_dim)
+        return linear(out, self.wo)
 
 
 class Qwen3MLP:
@@ -124,10 +176,21 @@ class Qwen3MLP:
         w_down: mx.array | QuantizedWeights,
         use_fast_swiglu: bool = True,
     ):
-        pass
+        self.dim = dim
+        self.hidden_dim = hidden_dim
+        self.w_gate = w_gate
+        self.w_up = w_up
+        self.w_down = w_down
+        self.use_fast_swiglu = use_fast_swiglu
 
     def __call__(self, x: mx.array) -> mx.array:
-        pass
+        gate = silu(linear(x, self.w_gate))
+        up = linear(x, self.w_up)
+        if self.use_fast_swiglu:
+            h = swiglu(gate, up)
+        else:
+            h = gate * up
+        return linear(h, self.w_down)
 
 
 class Qwen3TransformerBlock:
@@ -156,8 +219,40 @@ class Qwen3TransformerBlock:
         use_fast_rope: bool = True,
         use_fast_swiglu: bool = True,
         use_tiled_prefill_attention: bool = False,
+        use_mlx_quantized_linear: bool = False,
     ):
-        pass
+        self.use_fast_rms_norm = use_fast_rms_norm
+        self.use_fast_rope = use_fast_rope
+        self.use_tiled_prefill_attention = use_tiled_prefill_attention
+        self.use_mlx_quantized_linear = use_mlx_quantized_linear
+        self.input_layernorm = RMSNorm(hidden_size, w_input_layernorm)
+        self.post_attention_layernorm = RMSNorm(hidden_size, w_post_attention_layernorm)
+        self.multiHeadAttention = Qwen3MultiHeadAttention(
+            hidden_size=hidden_size,
+            num_heads=num_attention_heads,
+            num_kv_heads=num_kv_heads,
+            head_dim=head_dim,
+            wq=wq,
+            wk=wk,
+            wv=wv,
+            wo=wo,
+            q_norm=q_norm,
+            k_norm=k_norm,
+            max_seq_len=max_seq_len,
+            theta=theta,
+            rms_norm_eps=rms_norm_eps,
+            use_fast_rms_norm=use_fast_rms_norm,
+            use_fast_rope=use_fast_rope,
+            use_tiled_prefill_attention=use_tiled_prefill_attention,
+        )
+        self.mlp = Qwen3MLP(
+            dim=hidden_size,
+            hidden_dim=intermediate_size,
+            w_gate=w_gate,
+            w_up=w_up,
+            w_down=w_down,
+            use_fast_swiglu=use_fast_swiglu,
+        )
 
     def __call__(
         self,
@@ -166,7 +261,15 @@ class Qwen3TransformerBlock:
         cache: TinyKvCache,
         mask: mx.array | str | None = None,
     ) -> mx.array:
-        pass
+        x_input_layernorm = self.input_layernorm(x)
+        x_multiHeadAttention = self.multiHeadAttention(
+            x_input_layernorm, offset, cache, mask=mask
+        )
+        x_delta1 = x_multiHeadAttention + x
+
+        x_post_attention_layernorm = self.post_attention_layernorm(x_delta1)
+        x_mlp = self.mlp(x_post_attention_layernorm)
+        return x_mlp + x_delta1
 
 
 class Qwen3ModelWeek2:
@@ -180,7 +283,66 @@ class Qwen3ModelWeek2:
         use_tiled_prefill_attention: bool | None = None,
     ):
         self.num_hidden_layers = mlx_model.args.num_hidden_layers
-        pass
+        self.use_mlx_quantized_linear = use_mlx_quantized_linear
+        self.use_register_cached_rms_norm = use_register_cached_rms_norm
+
+        args = mlx_model.args
+        features = WEEK2_CHECKPOINT_FEATURES[checkpoint]
+        if use_bounded_kv_capacity is None:
+            use_bounded_kv_capacity = features.bounded_kv_capacity
+        if use_tiled_prefill_attention is None:
+            use_tiled_prefill_attention = features.tiled_prefill_attention
+        self.use_tiled_prefill_attention = use_tiled_prefill_attention
+        self.use_bounded_kv_capacity = use_bounded_kv_capacity
+
+        layers = []
+        for layer in mlx_model.model.layers:
+            sa = layer.self_attn
+            mlp = layer.mlp
+            layers.append(
+                Qwen3TransformerBlock(
+                    num_attention_heads=args.num_attention_heads,
+                    num_kv_heads=args.num_key_value_heads,
+                    hidden_size=args.hidden_size,
+                    head_dim=args.head_dim,
+                    intermediate_size=args.intermediate_size,
+                    rms_norm_eps=args.rms_norm_eps,
+                    wq=dequantize_linear(sa.q_proj),
+                    wk=dequantize_linear(sa.k_proj),
+                    wv=dequantize_linear(sa.v_proj),
+                    wo=dequantize_linear(sa.o_proj),
+                    q_norm=sa.q_norm.weight,
+                    k_norm=sa.k_norm.weight,
+                    w_gate=dequantize_linear(mlp.gate_proj),
+                    w_up=dequantize_linear(mlp.up_proj),
+                    w_down=dequantize_linear(mlp.down_proj),
+                    w_input_layernorm=layer.input_layernorm.weight,
+                    w_post_attention_layernorm=layer.post_attention_layernorm.weight,
+                    max_seq_len=getattr(args, "max_position_embeddings", 32768),
+                    theta=getattr(args, "rope_theta", 1000000),
+                    use_fast_rms_norm=features.fast_rms_norm,
+                    use_fast_rope=features.fast_rope,
+                    use_fast_swiglu=features.fast_swiglu,
+                    use_tiled_prefill_attention=use_tiled_prefill_attention,
+                    use_mlx_quantized_linear=use_mlx_quantized_linear,
+                )
+            )
+        self.layers = layers
+
+        self.embed_tokens = Embedding(
+            args.vocab_size,
+            args.hidden_size,
+            dequantize_linear(mlx_model.model.embed_tokens),
+        )
+        self.norm = RMSNorm(args.hidden_size, mlx_model.model.norm.weight)
+        if not args.tie_word_embeddings:
+            self.lm_head = Embedding(
+                args.vocab_size,
+                args.hidden_size,
+                dequantize_linear(mlx_model.lm_head),
+            )
+        else:
+            self.lm_head = self.embed_tokens
 
     def create_kv_cache(self, capacity: int | None = None) -> list[TinyKvCache]:
         return [
@@ -240,4 +402,39 @@ class Qwen3ModelWeek2:
             raise ValueError(
                 f"cache offset {cache[0].offset} disagrees with position {offset}"
             )
-        pass
+
+        h = self.embed_tokens(inputs)
+        for layer, layer_cache in zip(self.layers, cache):
+            h = layer(h, offset, layer_cache, mask="causal")
+
+        h = self.norm(h)
+        # 只需要最后一个位置的 logits: 预测下一个 token 用的是最后一个
+        # 位置的输出, 前面的位置不参与.
+        #
+        # 为什么能切. 每个位置的 h 在 28 层里有两次消费:
+        #   1. 变成这个位置的 k、v, 被后面的位置读到 (attention 内部);
+        #   2. 变成这个位置的输出, 作为下一层的输入.
+        # 第 28 层结束时这两次都用完了, 只剩 lm_head 还没用. 而 lm_head
+        # 只关心最后一个位置. 所以前面的 h 必须算 (它们的 k、v 被后面
+        # 的位置读), 但它们的 logits 不用算.
+        #
+        # 错误写法 (先算完再切):
+        #   logits = self.lm_head.as_linear(h)        # (B, L, V)
+        #   logits = logits[:, -logits_to_keep:, :]
+        # lm_head 是 (L, E) @ (E, V), 上面给全部 L 个位置各乘了一次,
+        # 只有最后几行被留下, 前面 L - logits_to_keep 行的矩阵乘白做.
+        #
+        # 正确写法 (先切再乘):
+        #   h = h[:, -logits_to_keep:, :]             # (B, k, E)
+        #   return self.lm_head.as_linear(h)          # (B, k, V)
+        # 乘加次数从 L·E·V 降到 k·E·V, k = logits_to_keep.
+        #
+        # 代一组数. E 与 V 取自 self.lm_head 的形状 (Qwen3-0.6B 是
+        # 1024 与 151936); L 取 prefill 的 token 数, 下面假设 33;
+        # k = logits_to_keep = 1:
+        #   错误   33 × 1024 × 151936 ≈ 5.13e9 次乘加
+        #   正确    1 × 1024 × 151936 ≈ 1.56e8 次乘加
+        #   比值 33, 等于 L / k.
+        if logits_to_keep is not None:
+            h = h[:, -logits_to_keep:, :]
+        return self.lm_head.as_linear(h)
