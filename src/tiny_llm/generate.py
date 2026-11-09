@@ -342,6 +342,7 @@ for i in tokenizer.encode(" 🦙 ok", add_special_tokens=False):
             print(segment, end="", flush=True)
             _screen[0] += len(segment)
         nxt = _step(model, tokens)
+        # Week 1 每步都送整句重算，_step(model, tokens) 里的 tokens 就是完整序列。不拼就少了历史，模型只能看到最后一个 token。
         tokens = mx.concatenate([tokens, nxt])
 
     detokenize.finalize()
@@ -359,9 +360,47 @@ def simple_generate_with_kv_cache(
     prompt: str,
     max_tokens: int = 256,
     use_bounded_kv_capacity: bool | None = None,
-) -> str:
+) -> None:
+
     def _step(model, y, offset, kv_cache):
-        pass
+        y = y[None, :]  # (L,) -> (1, L)
+        logits = model(y, offset, kv_cache, 1)  # (1, 1, V)
+        logits = logits[:, -1, :]  # (1, V), 去掉长度为 1 的位置维
+        m = mx.max(logits, axis=-1, keepdims=True)
+        logprobs = (
+            logits - m - mx.log(mx.sum(mx.exp(logits - m), axis=-1, keepdims=True))
+        )
+        nxt = mx.argmax(logprobs, axis=-1).astype(mx.int32)  # (1,)
+        return nxt
+
+    tokens = tokenizer.encode(prompt, add_special_tokens=False)
+    detokenize = tokenizer.detokenizer
+    detokenize.reset()  # 解码器带状态, 复用前先归零
+    tokens = mx.array(tokens)
+    if use_bounded_kv_capacity is None:
+        use_bounded_kv_capacity = bool(
+            getattr(model, "use_bounded_kv_capacity", False)
+        )
+    capacity = int(tokens.size) + max_tokens if use_bounded_kv_capacity else None
+    cache = model.create_kv_cache(capacity=capacity)
+
+    nxt = _step(model, tokens, 0, cache)
+    offset = tokens.size
+
+    for _ in range(max_tokens):
+        if nxt.item() == tokenizer.eos_token_id:
+            break
+        detokenize.add_token(nxt.item())
+        segment = detokenize.last_segment  # 读一次即消费一次, 存下来复用
+        if segment:
+            print(segment, end="", flush=True)
+        nxt = _step(model, nxt, offset, cache)
+        offset += 1
+
+    detokenize.finalize()
+    segment = detokenize.last_segment
+    if segment:
+        print(segment, end="", flush=True)
 
 
 def speculative_generate(
