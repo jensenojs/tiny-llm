@@ -119,8 +119,10 @@ class Qwen3MultiHeadAttention:
         self.wk = wk
         self.wv = wv
         self.wo = wo
-        self.q_norm = q_norm
-        self.k_norm = k_norm
+        # q_norm / k_norm 存成可调用的 RMSNorm 对象, 与 refsol 一致:
+        # profiler 的重放按 attention.q_norm(x) 调用它们.
+        self.q_norm = RMSNorm(head_dim, q_norm, eps=rms_norm_eps)
+        self.k_norm = RMSNorm(head_dim, k_norm, eps=rms_norm_eps)
         self.theta = theta
         self.head_dim = head_dim
         self.num_heads = num_heads
@@ -134,6 +136,9 @@ class Qwen3MultiHeadAttention:
         self.use_fast_rms_norm = use_fast_rms_norm
         self.use_fast_rope = use_fast_rope
         self.use_tiled_prefill_attention = use_tiled_prefill_attention
+        # profiler 的重放按 attention.scale 取缩放系数; 与
+        # scaled_dot_product_attention_grouped 内部用的 1/sqrt(D) 一致.
+        self.scale = head_dim**-0.5
 
     def __call__(
         self,
@@ -148,8 +153,8 @@ class Qwen3MultiHeadAttention:
         k = linear(x, self.wk).reshape(B, L, self.num_kv_heads, self.head_dim)
         v = linear(x, self.wv).reshape(B, L, self.num_kv_heads, self.head_dim)
 
-        q = mx.fast.rms_norm(q, self.q_norm, eps=self.rms_norm_eps)
-        k = mx.fast.rms_norm(k, self.k_norm, eps=self.rms_norm_eps)
+        q = self.q_norm(q)
+        k = self.k_norm(k)
 
         if not isinstance(offsets, int):
             raise NotImplementedError("per-request offsets are a Week 3 concern")
@@ -261,6 +266,12 @@ class Qwen3TransformerBlock:
             w_down=w_down,
             use_fast_swiglu=use_fast_swiglu,
         )
+        # 对账用的别名: benches/profile_week2_kernels.py 的 KernelReplay 按
+        # self_attn / hidden_size / num_attention_heads 读取每层, 与 refsol 的
+        # 属性名一致. 计算路径用的仍是 multiHeadAttention.
+        self.hidden_size = hidden_size
+        self.num_attention_heads = num_attention_heads
+        self.self_attn = self.multiHeadAttention
 
     def __call__(
         self,
@@ -336,6 +347,10 @@ class Qwen3ModelWeek2:
                 )
             )
         self.layers = layers
+        # 同上的对账别名: profiler 用 layers_inner 遍历每层, precision 决定
+        # 重放时的 dtype. Week 2 的权重始终是 bf16.
+        self.layers_inner = layers
+        self.precision = mx.bfloat16
 
         self.embed_tokens = Embedding(
             args.vocab_size,
@@ -351,6 +366,11 @@ class Qwen3ModelWeek2:
             )
         else:
             self.lm_head = self.embed_tokens
+
+        # 同上的对账别名: profiler 用 embedding 查表、用 w_lm_head 判断
+        # 出口是否与查表共用一张表 (tie=True 时为 None).
+        self.embedding = self.embed_tokens
+        self.w_lm_head = None if args.tie_word_embeddings else self.lm_head.weight
 
     def create_kv_cache(self, capacity: int | None = None) -> list[TinyKvCache]:
         return [

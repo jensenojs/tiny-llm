@@ -32,3 +32,9 @@ PYTHONPATH=$PWD:$PWD/src .venv/bin/python probes/week1/day6/zero_mask_two_hop.py
 | `mask_forced_float32.py` | 把 `causal_mask` 猴补成恒用 float32，输入 dtype 还影响结果吗 |
 | `activation_delta_by_stage.py` | int32 与 int64 输入逐级比对激活值 max\|Δ\|，定位差异出现在哪一级 |
 | `zero_mask_two_hop.py` | 两边都 float32、只换掩码内容，逐层比对末尾位置与前序位置 |
+
+## week2/day1
+
+| 脚本 | 回答的问题 |
+| :--- | :--- |
+| `replay_profiler_lab.py` | 重放式 profiler 的四组中位数之和、各组占比何时与真实执行相符，失真来自哪一项；配套的 `replay_profiler_lab.md` 记录原始输出与结论 |

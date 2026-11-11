@@ -203,6 +203,48 @@ def evaluate(outputs):
 
 
 def benchmark_groups(builders, warmup, iterations, *, evaluator=None, clock=None):
+    """对每组重放分别计时, 返回每组的中位数 (微秒).
+
+    builders 的每个元素是 adapter.ReplayGroup, 或能构造出它的 (名字, 函数).
+    函数不带参数, 返回 list[mx.array]. 返回 list 而不是单个张量, 是因为 MLX
+    惰性求值: 没人要的中间结果在求值时会被整个跳过. 全部收进 list 再
+    mx.eval(*outputs), 每一步才会真的算出来.
+
+    为什么要轮转:
+      若每轮都从 projections 开始, 它每次吃冷缓存 (权重刚从内存进片上),
+      后面几组吃它焐热的数据, 组间比较就不在同一前提下.
+      轮转让每一组在 len(groups) 轮里各当一次第一个, 冷启动成本被均摊.
+
+        orders = [groups[offset:] + groups[:offset] for offset in range(len(groups))]
+        从 offset 处切一刀, 后半段提到前面, 生成 n 份顺序 (n=4):
+          offset=0  [0 1 2 3]
+          offset=1  [1 2 3 0]
+          offset=2  [2 3 0 1]
+          offset=3  [3 0 1 2]
+
+    预热与正式测量怎么衔接:
+      warmup 轮只跑不计时 (start 取 None), 每轮仍换一份顺序. 正式测量从
+      orders[warmup % n] 接着往下取, 不重复热身用过的最后一个顺序.
+
+    计时包住的是什么:
+      clock 包住 group.build() 与 evaluator(outputs), 也就是包住一次 mx.eval.
+      group.prepare() 在 start 之前执行 (CacheReplay 用它建好历史前缀),
+      这段构造不计入该组. pointwise 的 offset 归一在 build 内调用, 计入.
+
+      由此带来一个性质: 每组计时都含一次同步往返. 真实的一次 forward 只在
+      末尾同步一次, 这里 n 组就是 n 次. 组本身工作量远大于一次同步时, 份额
+      基本不受影响; 组本身工作量小于一次同步时 (decode 的 KV growth 就是这样),
+      份额会被高估.
+
+    为什么取中位数:
+      偶发的调度抖动只落在两端, 不改变中位数; 均值会被这些样本拉高.
+
+    prepare/build/finish/cleanup 的配对由 CacheReplay 守护: prepare 建不起来
+    就抛, finish 校验 offset 与 capacity 没跑偏, cleanup 在 finally 里执行一次.
+    操作本身失败与清理失败同时发生时抛 ReplayCleanupError, 两个原因都保留.
+
+    返回值的单位是微秒, 来自 median(...) * 1_000_000.
+    """
     if warmup < 0 or iterations <= 0 or not builders:
         raise ValueError("require groups, nonnegative warmup and positive iterations")
     groups = tuple(item if isinstance(item, adapter.ReplayGroup)

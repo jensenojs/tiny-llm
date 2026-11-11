@@ -17,7 +17,7 @@ def dequantize_linear(mx_layer: Any) -> mx.array:
     32 个 16bit 权重压成 32*4 + 16 + 16 bit ≈ 4.5 bit/权重，体积约 8:1。
 
     数学关系：量化时 q = round(w / scale + bias)，所以还原就是反着算
-    w ≈ (q − bias) × scale。这是有损压缩——原始 BF16 的尾数在打包时已经
+    w ≈ (q −(+?) bias) × scale。这是有损压缩——原始 BF16 的尾数在打包时已经
     丢掉，每个数带百分之几的相对误差；本函数只做格式转换（位流 → 可计算的
     稠密矩阵），不找回信息，省的是显存和下载体积。
 
@@ -107,7 +107,85 @@ def dequantize_weights(
     group_size: int,
     bits: int,
 ) -> mx.array:
-    pass
+    """
+    两个数组做逐元素运算时，从最右边一维开始往左对齐，逐维比较：
+      - 其中一个为 1 → 可以，结果取另一个的大小（逻辑复制）；
+        - 其中一个“不存在” → 视为 1；
+      - 相等, 可以, 都大于 1 且不相等, 报错
+
+
+    weight 是 uint32 数组。每个元素是一个 32 位整数，不是“4 个字节的数组”。
+    4bit 量化时，MLX 把 8 个 4bit 的 q 塞进这一个 uint32。低位优先的布局长这样：
+
+    bit 31       24 23       16 15        8 7         0
+    [   q7       ][   q6     ][   q5     ][   q4    ][...]
+
+    step1 : 从这一个整数里，把 q0 ~ q7 八个 4bit 值抠出来, 拆包里 weight 缺“移位量”这一维, 在末尾拆 None, 广播出去
+    i.e weight(位流) → q(整数序列)
+
+    weight:  (..., M)        M 个 uint32
+    ↓ 拆包
+    q:       (..., M, n_pack)   每个 uint32 变出 n_pack 个 q
+    ↓ 摊平
+    q:       (..., M * n_pack)  每个权重一个整数
+
+    核心手法：(x >> shift) & mask
+    x      = [ ... q1 的 4 个 bit ... 低 4 位 ... ]
+    x >> 4 = [ ... 高位 ... ][ q1 ][ 原来的低 4 位挤掉 ]
+
+
+    shifts = mx.arange(0, 32, bits)   # [0, 4, 8, 12, 16, 20, 24, 28]，形状 (8,)
+    mask = (1 << bits) - 1            # 0b1111，标量
+    weight[..., None]                 # 形状 (..., M, 1), reshape 是为了让“组内共享 scale”这件事能用广播表达。
+    q = (weight[..., None] >> shifts) & mask
+
+    什么需要广播: 要对每个 uint32 做 n_pack 次不同的右移。shifts 是 (n_pack,)，它要和“每个 uint32”组合。
+
+    广播后：
+    - weight[..., None] → (..., M, 1)
+    - shifts → (8,)，广播成 (..., M, 8)
+    - 每个 uint32 被右移 8 个不同的量，得到 8 个版本, 每个 uint32 独立地、和所有 shift 组合一次。q[..., m, j] = 第 m 个 uint32 右移 shifts[j] 位后取低 bits 位。
+    - & mask 每个版本只留低 4 位
+    - 结果 q 形状 (..., M, 8)，q[..., m, j] 就是第 m 个 uint32 里的第 j 个 4bit 数
+
+    最后：q = q.reshape(*weight.shape[:-1], -1)  # (..., M, 8) → (..., M*8)
+
+    step2 : 反量化
+    q + scales + biases → w(浮点矩阵)
+    拆包后有一串整数 q，形状 (..., in_dims)。但 scales 只有 (..., num_groups) 个，一个 scale 管 group_size 个 q。要把“每组一个 scale”应用到“组内每个 q”上。
+
+    q:       (..., in_dims)
+    ↓ reshape
+    q:       (..., G, S)         G = num_groups, S = group_size
+    scales:  (..., G)
+    ↓ 插 None
+    scales:  (..., G, 1)
+    ↓ 广播
+    scales:  (..., G, S)         每组 scale 复制 S 份
+    ↓ 公式
+    w:       (..., G, S) → 摊平 → (..., in_dims)
+    """
+
+    # step1
+    shifts = mx.arange(0, 32, bits)
+    mask = (1 << bits) - 1
+    q = (weight[..., None] >> shifts) & mask  #  q 形状 (K, M, 32/bits), uint32
+
+    q = q.reshape(
+        *weight.shape[:-1], -1
+    )  # (K, M, 8) -> (K, N) 差别在「reshape 是拆分已有轴，None 是插入新轴」。
+    q = q.reshape(
+        *q.shape[:-1], -1, group_size
+    )  # (K, N) -> (K, G, S), 把「位置」换成「组号 × 组内偏移」
+
+    # step2
+    w = q * scales[..., None]
+    if biases is not None:
+        # (K, G, S)
+        w = w + biases[..., None]
+
+    w = w.reshape(*weight.shape[:-1], -1)  # (K, N)
+    return w.astype(mx.bfloat16)
 
 
 def quantized_matvec_custom(
