@@ -97,7 +97,60 @@ def quantized_matmul(
     use_simdgroup: bool = False,
     use_split_k: bool = False,
 ) -> mx.array:
-    pass
+    # 扩展的 .so 只在跑过 build-ext 后存在。导入放在函数体里，
+    # 模块导入时不要求它已构建。
+    from extensions.tiny_llm_ext import _ext
+
+    # 最后一维是点积长度 N，必须整段保留；其余维（batch、序列位置）彼此独立，
+    # 乘的是同一张权重，压成一维当 M。二维输入时 lead 只有 M 一项。
+    *lead, D = a.shape
+    a2 = a.reshape(-1, D)
+
+    """
+Metal 只拿到基地址, 按 i*N+j 算位置, 要求行主序。视图不满足这个前提:
+
+x = mx.arange(12).reshape(3, 4)
+t = x.T                        # 视图, 与 x 共用一块 buffer
+
+buffer      [0][1][2][3][4][5][6][7][8][9][10][11]
+
+x (3,4)     地址 = i*4 + j
+  行0        0  1  2  3
+  行1        4  5  6  7
+  行2        8  9 10 11
+
+t (4,3)     地址 = j*4 + i
+  行0        0  4  8
+  行1        1  5  9
+  行2        2  6 10
+  行3        3  7 11
+
+kernel 按自己假设的 i*3+j 读 t:
+  i=0 j=1   读到 1, 而 t[0,1] 是 4
+  i=1 j=0   读到 3, 而 t[1,0] 是 1
+
+mx.contiguous(t) 把底层重排成
+  [0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11]
+之后 i*3+j 才成立。已经连续的数组不复制, 函数直接返回原数组。
+
+四个输入都要过一遍: scales 与 biases 按 k*groups_per_row 取, b 按 k*N/8 取,
+它们同样可能来自切片或转置。推导见 docs/mlx-array-lifecycle.md 的
+「视图与连续布局」。参数顺序与 bindings.cpp:36-37 的注册顺序一致。
+    """
+    out = _ext.quantized_matmul(
+        mx.contiguous(scales),
+        mx.contiguous(biases),
+        group_size,
+        bits,
+        mx.contiguous(a2),
+        mx.contiguous(b),
+        transpose_b,
+        use_simdgroup,
+        use_split_k,
+    )
+
+    # 按 a 原来的前导维还原，最后一维换成 K = b.shape()[0]。
+    return out.reshape(*lead, -1)
 
 
 def dequantize_weights(
