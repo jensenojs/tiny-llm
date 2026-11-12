@@ -1,0 +1,93 @@
+{
+  "schema_version": 2,
+  "source": {
+    "commit": "d5bbd838ba9a8f6a6dc366800d3535447caab2d2",
+    "tree": "62b686bb2c3f35b37592e7ae63bbcbdcc9f0f077",
+    "tracked_dirty": true
+  },
+  "solution": "tiny_llm",
+  "model": "Qwen/Qwen3-0.6B-MLX-4bit",
+  "software": {
+    "mlx": "0.32.0",
+    "mlx_lm": "0.31.3",
+    "python": "3.10.18"
+  },
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "device": {
+      "device_name": "Apple M4",
+      "max_recommended_working_set_size": 12713115648,
+      "memory_size": 17179869184,
+      "architecture": "applegpu_g16g",
+      "max_buffer_length": 9534832640,
+      "resource_limit": 499000
+    }
+  },
+  "warmup": 4,
+  "iterations": 12,
+  "profiles": [
+    {
+      "checkpoint": "capacity-cache",
+      "workload": {
+        "model": "Qwen/Qwen3-0.6B-MLX-4bit",
+        "phase": "decode",
+        "tokens": 128,
+        "prompt_rule": "synthetic-token-ids",
+        "prefill_logits": "all",
+        "warmup": 4,
+        "iterations": 12
+      },
+      "workload_id": "882a3f52617e2a5a4bcc4ffd49ca13b12b927a5a4319fdf8e9f3250bfd0c504d",
+      "attributed_us": 23796.458001015708,
+      "categories": [
+        {
+          "name": "projections",
+          "median_us": 16540.562006412074,
+          "share": 0.6950850418875814
+        },
+        {
+          "name": "attention",
+          "median_us": 1174.6039963327348,
+          "share": 0.04936045508464323
+        },
+        {
+          "name": "normalization, position, and activation",
+          "median_us": 5607.354003586806,
+          "share": 0.23563817788964503
+        },
+        {
+          "name": "KV growth",
+          "median_us": 473.9379946840927,
+          "share": 0.01991632513813037
+        }
+      ],
+      "source": {
+        "commit": "d5bbd838ba9a8f6a6dc366800d3535447caab2d2",
+        "tree": "62b686bb2c3f35b37592e7ae63bbcbdcc9f0f077",
+        "tracked_dirty": true
+      },
+      "solution": "tiny_llm",
+      "model": "Qwen/Qwen3-0.6B-MLX-4bit",
+      "software": {
+        "mlx": "0.32.0",
+        "mlx_lm": "0.31.3",
+        "python": "3.10.18"
+      },
+      "host": {
+        "machine": "arm64",
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "device": {
+          "device_name": "Apple M4",
+          "max_recommended_working_set_size": 12713115648,
+          "memory_size": 17179869184,
+          "architecture": "applegpu_g16g",
+          "max_buffer_length": 9534832640,
+          "resource_limit": 499000
+        }
+      },
+      "warmup": 4,
+      "iterations": 12
+    }
+  ]
+}

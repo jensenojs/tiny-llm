@@ -178,3 +178,6 @@ cython_debug/
 
 *.dylib
 *.metallib
+
+# Build directory snapshots left by variant builds
+build.bak*/

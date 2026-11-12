@@ -1,0 +1,128 @@
+{
+  "schema_version": 2,
+  "source": {
+    "commit": "d5bbd838ba9a8f6a6dc366800d3535447caab2d2",
+    "tree": "62b686bb2c3f35b37592e7ae63bbcbdcc9f0f077",
+    "tracked_dirty": true
+  },
+  "host": {
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "processor": "arm",
+    "python_version": "3.10.18",
+    "mlx_version": "0.32.0",
+    "hardware": {
+      "machine_name": "MacBook Pro",
+      "machine_model": "Mac16,1",
+      "chip_type": "Apple M4",
+      "cpu_cores": "proc 10:0:4:6",
+      "gpu_model": "Apple M4",
+      "gpu_cores": "10",
+      "physical_memory": "16 GB"
+    }
+  },
+  "workload": {
+    "model": "qwen3-0.6b",
+    "input_tokens": 128,
+    "output_tokens": 129,
+    "seed": 0,
+    "prompt_rule": "synthetic-token-ids",
+    "prefill_logits": "all",
+    "warmup": 2,
+    "repeats": 2
+  },
+  "workload_id": "7d10203181257fcee72293cf85dab2d691363474fbb073f2d12c7dc6ec96bcd7",
+  "configuration": {
+    "model": "qwen3-0.6b",
+    "solution": "tiny_llm",
+    "suite": "week2",
+    "device": "gpu",
+    "input_len": 128,
+    "output_len": 129,
+    "warmup": 2,
+    "repeats": 2,
+    "seed": 0,
+    "prefill_logits": "all",
+    "offline": true,
+    "cooldown_seconds": 0.0,
+    "variants": [
+      "week1",
+      "week2-kv-cache",
+      "week2-capacity-cache"
+    ]
+  },
+  "execution_order": [
+    [
+      "week1",
+      "week2-kv-cache",
+      "week2-capacity-cache"
+    ],
+    [
+      "week2-capacity-cache",
+      "week2-kv-cache",
+      "week1"
+    ]
+  ],
+  "results": {
+    "week1": {
+      "label": "Week 1 readable",
+      "samples": [
+        {
+          "prefill": 199.47,
+          "decode": 1.1,
+          "output": 1.1
+        },
+        {
+          "prefill": 285.66,
+          "decode": 0.89,
+          "output": 0.89
+        }
+      ],
+      "median": {
+        "prefill": 242.565,
+        "decode": 0.9950000000000001,
+        "output": 0.9950000000000001
+      }
+    },
+    "week2-kv-cache": {
+      "label": "2.1 Reuse the prefix",
+      "samples": [
+        {
+          "prefill": 1759.38,
+          "decode": 36.44,
+          "output": 35.97
+        },
+        {
+          "prefill": 1725.01,
+          "decode": 31.97,
+          "output": 31.62
+        }
+      ],
+      "median": {
+        "prefill": 1742.1950000000002,
+        "decode": 34.205,
+        "output": 33.795
+      }
+    },
+    "week2-capacity-cache": {
+      "label": "2.1 + Bound KV-cache movement",
+      "samples": [
+        {
+          "prefill": 1731.45,
+          "decode": 37.09,
+          "output": 36.57
+        },
+        {
+          "prefill": 1726.49,
+          "decode": 38.45,
+          "output": 37.89
+        }
+      ],
+      "median": {
+        "prefill": 1728.97,
+        "decode": 37.77,
+        "output": 37.230000000000004
+      }
+    }
+  }
+}
