@@ -1,0 +1,241 @@
+[
+  {
+    "path": "5F094627A5A996AC",
+    "bytes": 214156448,
+    "sha256": "c6d7a3facb83568f6e4cb2cf4a8c736ee29302571a48343cb9a3a4d1cd3e3893"
+  },
+  {
+    "path": "653A65DFE6424676",
+    "bytes": 42444,
+    "sha256": "378eb1ccaec41402c65631c60dd287dfdca4631461171d060f76fcce2b2a8cd5"
+  },
+  {
+    "path": "MTLBuffer-27-0",
+    "bytes": 67108864,
+    "sha256": "a5266c53891851064fccc17361e06d42758526a4e5db790e5f87f14bcdde0f65"
+  },
+  {
+    "path": "MTLBuffer-30-0",
+    "bytes": 67108864,
+    "sha256": "a8dcf50837121fd80b34ad2bcfcf5f2d976909888ea789bcc89d3eb9cfa84301"
+  },
+  {
+    "path": "MTLBuffer-47-0",
+    "symlink": "MTLBuffer-55-0"
+  },
+  {
+    "path": "MTLBuffer-55-0",
+    "bytes": 67108864,
+    "sha256": "e880b2498cf77b8276c387ec3ff04eb6e151087f374022bec563c7a9f3b55569"
+  },
+  {
+    "path": "capture",
+    "bytes": 7684,
+    "sha256": "c468f418f38a7a0718b81ebed3f18a30a655d1777a28779325b94b1416aff7e8"
+  },
+  {
+    "path": "delta-device-resources-0x104afeb80",
+    "bytes": 152,
+    "sha256": "688e055b921ae195c992a6c058c8ab017e8bb8820364b060b69a0310ccb46bdf"
+  },
+  {
+    "path": "device-resources-0x104afeb80",
+    "bytes": 13192,
+    "sha256": "72bb799de68e99ef9bbefba1af902f0647af78d168a9804ff1fb9e16cc68f09c"
+  },
+  {
+    "path": "index",
+    "bytes": 14180,
+    "sha256": "a79dc8e258ebb581c44cad6e0be2570a71329901c55385c3872a0941a92d9573"
+  },
+  {
+    "path": "metadata",
+    "bytes": 1136,
+    "sha256": "413bbf9045855ba21e3acc2b6f1719ab8fa08779c44aedbfe31d0f271a084e93"
+  },
+  {
+    "path": "startup-0-platform",
+    "bytes": 72,
+    "sha256": "7f11e6d0573b7f58d9b510a451ee55e64d9ec7ca7fb270848bba52c6643db7f9"
+  },
+  {
+    "path": "startup-1-platform",
+    "bytes": 8,
+    "sha256": "307bca216804762e9741cc4d56a78333351e51a2b9ba29b1b623c5c07df79550"
+  },
+  {
+    "path": "store0",
+    "bytes": 21893,
+    "sha256": "4fc1c5a7d3e9d2eeb44e45c61d580c3dec500c9d3a946383df08dfd8d202b96d"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_0.raw",
+    "bytes": 1003520,
+    "sha256": "b0175892c0f00a95056ee91f4d166f7bb9d7f8490e5dabfcd3065d835c3f0d6c"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_1.raw",
+    "bytes": 1003520,
+    "sha256": "8d4940393693b8e8cb4c99d156b704b43e12e748d03dfc8f9b9b5ba9d2b55850"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_2.raw",
+    "bytes": 1003520,
+    "sha256": "53e843ecdbc631a8763e47a174c9782ad2bbd2bf48498c9bb3d9a4d222d2a0fe"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_3.raw",
+    "bytes": 995328,
+    "sha256": "622226f5e325ed2f3e09691e54f5ff6c8f8f1df0dfcefc2964aa6d7174132d3d"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_4.raw",
+    "bytes": 991232,
+    "sha256": "89688bfc8775f664dbf72711296ac2c0272be320567daf7c4e2b41b8324dd061"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_5.raw",
+    "bytes": 987136,
+    "sha256": "85b7518b0e3903e4b032de18cb06b76597e8aefd6cdbfd7a08151b27fee863af"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_6.raw",
+    "bytes": 987136,
+    "sha256": "01a5b512de9e416c8efa98b8a13b536f7b6fce83ea2439f757b6b7b18ecaf0cc"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_7.raw",
+    "bytes": 978944,
+    "sha256": "a78f3b0639f1e3b0d643342781b527d31ad3c566478775f18593152152a3e954"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_8.raw",
+    "bytes": 974848,
+    "sha256": "0eccb2addbe90532970448fcc20ee881f4f9684bbb7172e91fe49fa7f36cff81"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Counters_f_9.raw",
+    "bytes": 974848,
+    "sha256": "f088b0666caabaf49871b7fc1337018de047af9be806e56194b6ad33354b9070"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_0.raw",
+    "bytes": 6688768,
+    "sha256": "d9bb449561e7f66c1641b88fe7c22b7063d194d478380ad0e108cf70b46718ba"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_1.raw",
+    "bytes": 6680576,
+    "sha256": "26d9c56843aad3e6d279da5416010874c06e46a0b731802d7b056cc877d82bee"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_2.raw",
+    "bytes": 6623232,
+    "sha256": "42abd43d30d66fae963621b2346f610702bd071f3334668e51eb9a714fa4c557"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_3.raw",
+    "bytes": 1810432,
+    "sha256": "a5f85dde6da3038165d2dc4c42dc0ffe29f88e444d0e45834c8424482c7db8a9"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_4.raw",
+    "bytes": 1810432,
+    "sha256": "e7ad90da9b26ddec9cb7aaca6f61c594230817982c845050b65f377f4870c2a3"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_5.raw",
+    "bytes": 1810432,
+    "sha256": "fa6e9c249aa5e8ac2e0085da27aa15910df85df23a80acdf5269937327070a3b"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_6.raw",
+    "bytes": 1810432,
+    "sha256": "b758ceb57df46bb2dbe48c64b69e0ebd75d9a1a1935a90af05fc6a51253810bc"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_7.raw",
+    "bytes": 1814528,
+    "sha256": "714ebc6a95a404423405794ae7c484a36e41cf8ca53a946d98506f75dedc4d2d"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_8.raw",
+    "bytes": 1810432,
+    "sha256": "f7d2dc7156765f92043305b8a04e5e3c45dc79e317ad531ac36ba9ffb8aefc10"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Profiling_f_9.raw",
+    "bytes": 1798144,
+    "sha256": "f69c63c6754dbed8b313eae9f3dff2cb04584053cee8c32cbcf17186b552287a"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_0.raw",
+    "bytes": 4980736,
+    "sha256": "51636a1fc1734a8d7ceb36c4d0fcb294bfefebc09b13881f307afe1e4e884595"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_1.raw",
+    "bytes": 4956160,
+    "sha256": "54efcbffd002fa7b020c4d977bc931b95dd107219adf7e9776c3c9f30e892ee9"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_2.raw",
+    "bytes": 4968448,
+    "sha256": "8e576d9ff7677063bee50a4a4eb0042824fc33bc6c93413fd08164b8ec084e3e"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_3.raw",
+    "bytes": 4964352,
+    "sha256": "594cff73258e0433d381d7665c767f50d3a8245e99d25ec320c02137f24e91c4"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_4.raw",
+    "bytes": 4960256,
+    "sha256": "a3fb4290695e1202abd87768150e3078c652fd81d8541ae4870871ee98e1de74"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_5.raw",
+    "bytes": 4964352,
+    "sha256": "b60595eb7dffe7d7e9be151170261d145e75e43b677b8b27ae070d611861bfb0"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_6.raw",
+    "bytes": 4960256,
+    "sha256": "bdf1c6c4740f80a520f42b72784bb3f944094f6cc21f10f606e17f6d1a193e0a"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_7.raw",
+    "bytes": 4968448,
+    "sha256": "85876ac52a778b6a6ee6e10470ffccd12a6a469ecc301ef0c534153dab5c8d11"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_8.raw",
+    "bytes": 4964352,
+    "sha256": "1e7e7314435e5e3542f8009316e0b44e00433f88e0ecdd8563b52c111aae0cdd"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/Timeline_f_9.raw",
+    "bytes": 4968448,
+    "sha256": "7f0b7ebcad46e0f235ad00534fab90c76d2a81f67f1522d7fb85c5bf7eecbb0f"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/profile_info.json",
+    "bytes": 144,
+    "sha256": "854fcb2348ccc73b0a9964dbb7504c39f8922b5c3acd0fec291cc50cf71969ff"
+  },
+  {
+    "path": "transpose-verified_stream_0.gpuprofiler_raw/streamData",
+    "bytes": 543620,
+    "sha256": "e3053e4ca20a7bc8de893e31ffce4cf8acef755b458a896e718e3aacda9afd63"
+  },
+  {
+    "path": "unsorted-capture",
+    "bytes": 9216,
+    "sha256": "92544d08e9e7f8a25890e06d5d7e4e6c32c9c8fbf8c3b3677448ca027918c8ec"
+  },
+  {
+    "path": "unused-device-resources-0x104afeb80",
+    "bytes": 34716,
+    "sha256": "90de7db74dbc00b374ed56cdcf9fbf1e6a1415fae3dc1332c84db5d5a69aff5c"
+  }
+]

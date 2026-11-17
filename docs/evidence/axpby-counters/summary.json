@@ -1,0 +1,901 @@
+{
+  "target_process": "python (89798)",
+  "encoder_count": 99,
+  "counter_interval_rows": 3027316,
+  "scope": "Whole-GPU samples clipped to target GPU intervals; mixed-process traffic",
+  "groups": {
+    "contiguous": {
+      "calls": 30,
+      "active_ms": 111.175669,
+      "gpu_ms_per_call": 3.7058556333333335,
+      "first_ns": 1645293666,
+      "last_ns": 1783734125,
+      "execution_spans_ns": [
+        [
+          1645293666,
+          1649434208
+        ],
+        [
+          1650234625,
+          1653232541
+        ],
+        [
+          1653789166,
+          1657875000
+        ],
+        [
+          1658644875,
+          1658662250
+        ],
+        [
+          1658698125,
+          1658773833
+        ],
+        [
+          1658832000,
+          1661433000
+        ],
+        [
+          1661754000,
+          1664470250
+        ],
+        [
+          1667722208,
+          1670784625
+        ],
+        [
+          1671321958,
+          1676093833
+        ],
+        [
+          1676616833,
+          1679390541
+        ],
+        [
+          1679900500,
+          1684072500
+        ],
+        [
+          1684119083,
+          1684640416
+        ],
+        [
+          1685350833,
+          1688565083
+        ],
+        [
+          1691601125,
+          1694436708
+        ],
+        [
+          1695591291,
+          1700134875
+        ],
+        [
+          1700186166,
+          1700765458
+        ],
+        [
+          1701150791,
+          1704504291
+        ],
+        [
+          1704896958,
+          1705604708
+        ],
+        [
+          1705669750,
+          1707014166
+        ],
+        [
+          1707052750,
+          1709267000
+        ],
+        [
+          1709307875,
+          1709560083
+        ],
+        [
+          1709940625,
+          1712738000
+        ],
+        [
+          1713033708,
+          1717219583
+        ],
+        [
+          1717257333,
+          1717760708
+        ],
+        [
+          1718125958,
+          1721162458
+        ],
+        [
+          1721654791,
+          1725811916
+        ],
+        [
+          1726210333,
+          1729399875
+        ],
+        [
+          1730008541,
+          1734276750
+        ],
+        [
+          1735737416,
+          1738855250
+        ],
+        [
+          1742236083,
+          1742293750
+        ],
+        [
+          1742331208,
+          1745571208
+        ],
+        [
+          1746050458,
+          1751078333
+        ],
+        [
+          1751688458,
+          1754886708
+        ],
+        [
+          1755474500,
+          1756501000
+        ],
+        [
+          1756537875,
+          1759504750
+        ],
+        [
+          1759548125,
+          1760741541
+        ],
+        [
+          1761122291,
+          1763952083
+        ],
+        [
+          1764557333,
+          1769642750
+        ],
+        [
+          1770220541,
+          1773354583
+        ],
+        [
+          1773397291,
+          1773505916
+        ],
+        [
+          1776154166,
+          1779535250
+        ],
+        [
+          1780044625,
+          1783734125
+        ]
+      ],
+      "counters": {
+        "3": {
+          "name": "Kernel Occupancy",
+          "description": "Percentage of shader core resources that are occupied by the compute kernel",
+          "type": "Percentage",
+          "weighted_mean": 26.78570283383221,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "17": {
+          "name": "Integer and Conditional Limiter",
+          "description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "type": "Percentage",
+          "weighted_mean": 2.29946310475299,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "21": {
+          "name": "Integer and Complex Limiter",
+          "description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "type": "Percentage",
+          "weighted_mean": 2.3364961000543514,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "23": {
+          "name": "L1 Cache Limiter",
+          "description": "Measures the time during which shader core L1 cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 1.399290125410599,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "24": {
+          "name": "L1 Cache Utilization",
+          "description": "Measures the time during which GPU\u2019s L1 cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 1.3992808284556248,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "46": {
+          "name": "Buffer L1 Miss Rate",
+          "description": "Percentage buffer L1 cache accesses are misses from shader",
+          "type": "Percentage",
+          "weighted_mean": 61.530936335230685,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "68": {
+          "name": "Buffer L1 Read Bandwidth",
+          "description": "L1 read bandwidth that is used by buffers in GiB/s",
+          "type": "Value",
+          "weighted_mean": 33.74584669676024,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "69": {
+          "name": "Buffer L1 Write Bandwidth",
+          "description": "L1 write bandwidth that is used by buffers in GiB/s",
+          "type": "Value",
+          "weighted_mean": 16.85155227855547,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5389
+        },
+        "70": {
+          "name": "GPU Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read or written by the GPU to a memory external to the GPU (potentially device memory).",
+          "type": "Value",
+          "weighted_mean": 60.26359003588873,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544,
+          "integrated_MB_per_call": 223.32816461938882
+        },
+        "71": {
+          "name": "GPU Read Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "type": "Value",
+          "weighted_mean": 42.01358246226268,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544,
+          "integrated_MB_per_call": 155.6962712442907
+        },
+        "72": {
+          "name": "GPU Write Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "type": "Value",
+          "weighted_mean": 18.250007573130933,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544,
+          "integrated_MB_per_call": 67.63189337326325
+        },
+        "79": {
+          "name": "MMU Limiter",
+          "description": "Measures the time during which GPU is attempting to execute read and write requests through MMU due to last level cache misses as a percentage of peak MMU performance",
+          "type": "Percentage",
+          "weighted_mean": 23.277928493843195,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544
+        },
+        "80": {
+          "name": "MMU Utilization",
+          "description": "Measures the time during which GPU serviced read and write requests through MMU due to last level cache misses as a percentage of peak MMU performance",
+          "type": "Percentage",
+          "weighted_mean": 8.007387069020954,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544
+        },
+        "81": {
+          "name": "Last Level Cache Limiter",
+          "description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 24.836072884437602,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544
+        },
+        "82": {
+          "name": "Last Level Cache Utilization",
+          "description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 8.969259215020873,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544
+        },
+        "83": {
+          "name": "Last Level Cache Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read or written by the GPU's last level cache",
+          "type": "Value",
+          "weighted_mean": 67.50264288108632,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3544,
+          "integrated_MB_per_call": 250.15504938576197
+        }
+      }
+    },
+    "transpose": {
+      "calls": 30,
+      "active_ms": 122.659753,
+      "gpu_ms_per_call": 4.088658433333333,
+      "first_ns": 1799194666,
+      "last_ns": 1944813500,
+      "execution_spans_ns": [
+        [
+          1799194666,
+          1802154250
+        ],
+        [
+          1802483416,
+          1805595250
+        ],
+        [
+          1805953791,
+          1811109500
+        ],
+        [
+          1811487500,
+          1814475833
+        ],
+        [
+          1814795875,
+          1817846125
+        ],
+        [
+          1818330791,
+          1823850958
+        ],
+        [
+          1824347666,
+          1827993208
+        ],
+        [
+          1829033375,
+          1830040250
+        ],
+        [
+          1830106291,
+          1834760250
+        ],
+        [
+          1836118583,
+          1839509958
+        ],
+        [
+          1839925375,
+          1843227750
+        ],
+        [
+          1844153375,
+          1847911916
+        ],
+        [
+          1850359708,
+          1853759916
+        ],
+        [
+          1854153291,
+          1857316708
+        ],
+        [
+          1857796125,
+          1862824291
+        ],
+        [
+          1862873166,
+          1864246875
+        ],
+        [
+          1864691500,
+          1866695125
+        ],
+        [
+          1866758291,
+          1869639458
+        ],
+        [
+          1870040666,
+          1874515916
+        ],
+        [
+          1875225583,
+          1875242833
+        ],
+        [
+          1875276541,
+          1878456750
+        ],
+        [
+          1878799000,
+          1883239541
+        ],
+        [
+          1885055791,
+          1888229541
+        ],
+        [
+          1891292666,
+          1894590833
+        ],
+        [
+          1894624166,
+          1895862666
+        ],
+        [
+          1896311875,
+          1901302625
+        ],
+        [
+          1901777541,
+          1905048791
+        ],
+        [
+          1907622333,
+          1910640916
+        ],
+        [
+          1910948125,
+          1916317625
+        ],
+        [
+          1916369416,
+          1916617541
+        ],
+        [
+          1916922875,
+          1920027250
+        ],
+        [
+          1920354791,
+          1925148958
+        ],
+        [
+          1925454000,
+          1928719250
+        ],
+        [
+          1929298500,
+          1935391875
+        ],
+        [
+          1935450916,
+          1935923666
+        ],
+        [
+          1936546000,
+          1940885833
+        ],
+        [
+          1941340208,
+          1944813500
+        ]
+      ],
+      "counters": {
+        "3": {
+          "name": "Kernel Occupancy",
+          "description": "Percentage of shader core resources that are occupied by the compute kernel",
+          "type": "Percentage",
+          "weighted_mean": 30.744350769028927,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "17": {
+          "name": "Integer and Conditional Limiter",
+          "description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "type": "Percentage",
+          "weighted_mean": 23.49493618956954,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "21": {
+          "name": "Integer and Complex Limiter",
+          "description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "type": "Percentage",
+          "weighted_mean": 39.280061062396435,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "23": {
+          "name": "L1 Cache Limiter",
+          "description": "Measures the time during which shader core L1 cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 5.10610077151971,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "24": {
+          "name": "L1 Cache Utilization",
+          "description": "Measures the time during which GPU\u2019s L1 cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 5.105973135503231,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "46": {
+          "name": "Buffer L1 Miss Rate",
+          "description": "Percentage buffer L1 cache accesses are misses from shader",
+          "type": "Percentage",
+          "weighted_mean": 66.77332841496603,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "68": {
+          "name": "Buffer L1 Read Bandwidth",
+          "description": "L1 read bandwidth that is used by buffers in GiB/s",
+          "type": "Value",
+          "weighted_mean": 53.47142061454506,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "69": {
+          "name": "Buffer L1 Write Bandwidth",
+          "description": "L1 write bandwidth that is used by buffers in GiB/s",
+          "type": "Value",
+          "weighted_mean": 15.335655522387869,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 5932
+        },
+        "70": {
+          "name": "GPU Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read or written by the GPU to a memory external to the GPU (potentially device memory).",
+          "type": "Value",
+          "weighted_mean": 54.05987507914121,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906,
+          "integrated_MB_per_call": 221.0323641472772
+        },
+        "71": {
+          "name": "GPU Read Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "type": "Value",
+          "weighted_mean": 37.41470910217378,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906,
+          "integrated_MB_per_call": 152.97596590131624
+        },
+        "72": {
+          "name": "GPU Write Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "type": "Value",
+          "weighted_mean": 16.645165976460692,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906,
+          "integrated_MB_per_call": 68.05639824388908
+        },
+        "79": {
+          "name": "MMU Limiter",
+          "description": "Measures the time during which GPU is attempting to execute read and write requests through MMU due to last level cache misses as a percentage of peak MMU performance",
+          "type": "Percentage",
+          "weighted_mean": 22.85563332933716,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906
+        },
+        "80": {
+          "name": "MMU Utilization",
+          "description": "Measures the time during which GPU serviced read and write requests through MMU due to last level cache misses as a percentage of peak MMU performance",
+          "type": "Percentage",
+          "weighted_mean": 7.183609091980502,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906
+        },
+        "81": {
+          "name": "Last Level Cache Limiter",
+          "description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 45.254596648111175,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906
+        },
+        "82": {
+          "name": "Last Level Cache Utilization",
+          "description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 35.58130188584881,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906
+        },
+        "83": {
+          "name": "Last Level Cache Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read or written by the GPU's last level cache",
+          "type": "Value",
+          "weighted_mean": 267.7537903724529,
+          "covered_fraction": 1.0,
+          "overlapping_samples": 3906,
+          "integrated_MB_per_call": 1094.753793063295
+        }
+      }
+    },
+    "strided_rows": {
+      "calls": 30,
+      "active_ms": 52.233003,
+      "gpu_ms_per_call": 1.7411001000000002,
+      "first_ns": 1958013458,
+      "last_ns": 2029753625,
+      "execution_spans_ns": [
+        [
+          1958013458,
+          1958123833
+        ],
+        [
+          1958182041,
+          1959582416
+        ],
+        [
+          1959997416,
+          1961459291
+        ],
+        [
+          1961826833,
+          1963321958
+        ],
+        [
+          1965712000,
+          1967352458
+        ],
+        [
+          1967664375,
+          1969972000
+        ],
+        [
+          1970291875,
+          1972833666
+        ],
+        [
+          1974428250,
+          1974589750
+        ],
+        [
+          1974642791,
+          1976061250
+        ],
+        [
+          1976408500,
+          1977889750
+        ],
+        [
+          1978327041,
+          1979878958
+        ],
+        [
+          1982754291,
+          1984091416
+        ],
+        [
+          1984400333,
+          1985676375
+        ],
+        [
+          1985961333,
+          1987335541
+        ],
+        [
+          1987716916,
+          1988796875
+        ],
+        [
+          1988836541,
+          1991784166
+        ],
+        [
+          1992340750,
+          1992399625
+        ],
+        [
+          1992437375,
+          1992778708
+        ],
+        [
+          1992810958,
+          1994175541
+        ],
+        [
+          1994648166,
+          1996239916
+        ],
+        [
+          1996727625,
+          1997771208
+        ],
+        [
+          1997814333,
+          1999132750
+        ],
+        [
+          1999634708,
+          2001247625
+        ],
+        [
+          2001765625,
+          2004087125
+        ],
+        [
+          2005060750,
+          2006254416
+        ],
+        [
+          2006511750,
+          2007888833
+        ],
+        [
+          2008181041,
+          2009744166
+        ],
+        [
+          2010022208,
+          2011198333
+        ],
+        [
+          2011459833,
+          2012689125
+        ],
+        [
+          2012903916,
+          2015059708
+        ],
+        [
+          2016476958,
+          2016635750
+        ],
+        [
+          2016685666,
+          2017983625
+        ],
+        [
+          2018288083,
+          2019776666
+        ],
+        [
+          2020017166,
+          2022823250
+        ],
+        [
+          2024552083,
+          2025895000
+        ],
+        [
+          2026128166,
+          2027628750
+        ],
+        [
+          2028049291,
+          2029753625
+        ]
+      ],
+      "counters": {
+        "70": {
+          "name": "GPU Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read or written by the GPU to a memory external to the GPU (potentially device memory).",
+          "type": "Value",
+          "weighted_mean": 62.330145388388964,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422,
+          "integrated_MB_per_call": 27.096644900702966
+        },
+        "71": {
+          "name": "GPU Read Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "type": "Value",
+          "weighted_mean": 43.48272300627223,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422,
+          "integrated_MB_per_call": 18.903147061102015
+        },
+        "72": {
+          "name": "GPU Write Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "type": "Value",
+          "weighted_mean": 18.84742238161708,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422,
+          "integrated_MB_per_call": 8.193497839383742
+        },
+        "79": {
+          "name": "MMU Limiter",
+          "description": "Measures the time during which GPU is attempting to execute read and write requests through MMU due to last level cache misses as a percentage of peak MMU performance",
+          "type": "Percentage",
+          "weighted_mean": 21.2284475384521,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422
+        },
+        "80": {
+          "name": "MMU Utilization",
+          "description": "Measures the time during which GPU serviced read and write requests through MMU due to last level cache misses as a percentage of peak MMU performance",
+          "type": "Percentage",
+          "weighted_mean": 8.283906562781938,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422
+        },
+        "81": {
+          "name": "Last Level Cache Limiter",
+          "description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 22.727894100662812,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422
+        },
+        "82": {
+          "name": "Last Level Cache Utilization",
+          "description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 9.212956235771342,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422
+        },
+        "83": {
+          "name": "Last Level Cache Bandwidth",
+          "description": "Measures how much memory, in gigabytes per second, are read or written by the GPU's last level cache",
+          "type": "Value",
+          "weighted_mean": 69.32352786038685,
+          "covered_fraction": 0.2496856824410421,
+          "overlapping_samples": 422,
+          "integrated_MB_per_call": 30.13686244420042
+        },
+        "3": {
+          "name": "Kernel Occupancy",
+          "description": "Percentage of shader core resources that are occupied by the compute kernel",
+          "type": "Percentage",
+          "weighted_mean": 30.22324752014188,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        },
+        "17": {
+          "name": "Integer and Conditional Limiter",
+          "description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "type": "Percentage",
+          "weighted_mean": 26.604322706157994,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        },
+        "21": {
+          "name": "Integer and Complex Limiter",
+          "description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "type": "Percentage",
+          "weighted_mean": 44.672868186845335,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        },
+        "23": {
+          "name": "L1 Cache Limiter",
+          "description": "Measures the time during which shader core L1 cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 2.494600695105292,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        },
+        "24": {
+          "name": "L1 Cache Utilization",
+          "description": "Measures the time during which GPU\u2019s L1 cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "type": "Percentage",
+          "weighted_mean": 2.4945770024627265,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        },
+        "46": {
+          "name": "Buffer L1 Miss Rate",
+          "description": "Percentage buffer L1 cache accesses are misses from shader",
+          "type": "Percentage",
+          "weighted_mean": 28.601936876221977,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        },
+        "68": {
+          "name": "Buffer L1 Read Bandwidth",
+          "description": "L1 read bandwidth that is used by buffers in GiB/s",
+          "type": "Value",
+          "weighted_mean": 44.810079764530435,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        },
+        "69": {
+          "name": "Buffer L1 Write Bandwidth",
+          "description": "L1 write bandwidth that is used by buffers in GiB/s",
+          "type": "Value",
+          "weighted_mean": 17.99762846545971,
+          "covered_fraction": 0.9012486990265522,
+          "overlapping_samples": 2295
+        }
+      }
+    }
+  }
+}

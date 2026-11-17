@@ -224,26 +224,30 @@ out.set_data(mx::allocator::malloc(out.nbytes()));
 
 100 个 kernel 攒成一次提交，比逐个提交快约 27 倍。固定开销只付一遍，随 kernel 数增长的部分约 3.5 µs 一个。
 
-Metal 里承担攒批的对象分四层，后一层挂在前一层上：
+Metal 先为要运行的 GPU 函数准备可绑定的执行对象，再记录派发命令。两个过程都以同一台设备为起点：
 
 ```
-MTL::Device                            GPU 本身
-  └─ MTL::CommandQueue                 一条提交通道, 同一队列上按提交顺序执行
-      └─ MTL::CommandBuffer            当前这一次提交装的东西
-          └─ MTL::ComputeCommandEncoder   往这个 buffer 里写命令的接口
+GPU 函数源码 → library → 按函数名取出 function
+                          └─ 与 Device 一起创建 ComputePipelineState（ps）
+
+Device → CommandQueue → CommandBuffer（cb）→ ComputeCommandEncoder
+                                                 │
+                                                 ├─ 绑定 ps、输入/输出数据缓冲
+                                                 └─ dispatch：记录本次 grid、threadgroup
+结束编码 → commit cb → GPU 执行记录的派发 → 等待完成后读取输出
 ```
 
-四层各回答一个问题：用哪块 GPU、从哪条通道提交、这一次提交装什么、用什么往里面写。Metal 的命令是记录出来的，不是调用即执行：encoder 把 `setBuffer`、`dispatchThreads` 一条条写进 buffer，写完 `endEncoding`，buffer 才能 `commit`。
+`ps` 指定派发哪一个已编译的 GPU 函数；它在派发前创建，可以供同一函数的多次派发使用。grid 和 threadgroup 属于每次派发，决定启动的线程范围及分组。数据缓冲存放数组，例如 `x`、`y`、`out`；绑定槽位固定时，各次派发仍可绑定不同的数据缓冲。command buffer 存放命令，一次提交后不能再拿来记录下一批命令。encoder 负责记录绑定与派发，调用 `dispatchThreads` 时尚未执行 GPU 函数；结束编码并 `commit` 后，GPU 才能执行。一个 command buffer 可以记录多次派发，两个不同的 `ps` 也可以分别用于同一次提交中的两条派发。计算图中节点的输入依赖决定哪些结果需要先产生，`ps` 本身不保存节点之间的依赖关系。
 
 MLX 另有一个 `metal::CommandEncoder`（`include/mlx/backend/metal/device.h:24`），与 Metal 的编码器同名不同物。它自己持有 `queue_` 与 `buffer_`（`device.h:115-116`），内部再懒建一个 Metal 的 encoder。编码一次 kernel 的动作是固定的几个调用：装内核、绑 buffer、传标量、dispatch（`device.h:46-57`）。
 
-提交拆成三步（`device.h:97-102`）：`end_encoding()` 结束编码，此后这个 buffer 不能再写；`commit()` 把它交给队列；`synchronize()` 等它完成。`evaluated` 与 `available` 的差别落在这两步之间。
+提交涉及三个动作（`device.h:97-102`）：`end_encoding()` 结束当前计算 encoder；同一 command buffer 在提交前仍可以记录其他 encoder 的命令。`commit()` 把当前 buffer 交给队列，并为后续命令创建下一只 buffer。MLX 的 `synchronize()` 会结束当前编码、提交并等待完成。`evaluated` 表示后端已编码，`available` 表示结果计算完成。
 
 `Stream` 是 `(index, device)` 二元组（`include/mlx/stream.h:14-17`）。一个 stream 对应一个 `CommandEncoder`，也就对应一条队列与一个当前 buffer，取用入口是 `get_command_encoder(Stream)`（`device.h:257`）。编码器按 stream 的下标存在一张表里（`device.h:259-260`），所以多条 stream 就是多条队列，可以同时提交。
 
 并行提交本身不产生等待。依赖来自图：某个节点的输入，是另一条 stream 上产生的数组。这时消费方不能直接读，因为生产方可能还没跑完。让整台设备同步代价太大，MLX 用事件只串起这一条依赖：生产方的 encoder 在算完之后 `signal_event`（`device.h:99`），消费方的 encoder 在开始之前 `wait_event`（`device.h:98`）。数组上的 `event` 字段（`array.h:468-469`）记的就是这个还没兑现的信号，`attach_event` 挂上，`detach_event` 在把数组读走之前先 `check_error()` 再清空（`array.h:411-419`）。没有事件，跨流依赖只剩同步整个设备这一条路。
 
-`set_input_array(const array&, int, int64_t offset)` 只传基地址与偏移（`device.h:48`），kernel 拿不到 stride。自定义 kernel 按自己假设的布局算下标，所以传进 kernel 的数组必须连续，这件事落在写 primitive 的人身上。项目里由 Python 侧调用 `.contiguous()` 完成。
+`set_input_array(const array&, int, int64_t offset)` 绑定缓冲及偏移（`device.h:48`），strides 需要另外传递，或者由 kernel 的布局约定确定。要求行连续的量化 kernel 由调用边界准备连续输入；Axpby 的 general kernel 则在槽 5 至 8 传 shape、两份 strides 与 ndim，直接读取转置或切片视图。布局约定由 primitive 与 kernel 共同保证。
 
 ## 数值什么时候没了
 
@@ -298,6 +302,7 @@ Task 3 写 `eval_gpu`：申请输出显存、绑 buffer、设 grid、dispatch。
 | `ArrayDesc` | C++ | 节点：形状、依赖、状态、数据指针 | `mx::array` |
 | `Primitive` 子类 | C++ | 这个节点怎么算，以及本次调用的参数 | `ArrayDesc::primitive` |
 | `Data` | C++ | 一块缓冲及其释放责任 | `ArrayDesc::data` |
+| `MTL::ComputePipelineState` | Metal | 针对设备与 GPU 函数编译的可绑定对象；报告该函数的线程组上限 | 设备构造，编码派发时引用 |
 | `metal::CommandEncoder` | C++ | 往当前 buffer 追加命令 | 按 stream 存放 |
 | `MTL::CommandBuffer` | Metal | 一次提交的单位 | `CommandEncoder::buffer_` |
 | `MTL::CommandQueue` | Metal | 提交端口 | `CommandEncoder::queue_` |
@@ -380,9 +385,42 @@ i=1 j=0   i*3+j = 3   读到 3, 而 t[1,0] 是 1
 
 此后 `i*3+j` 才指向正确的元素。已经连续的数组不复制，函数直接返回原数组。
 
-让 kernel 自己按 `j*4+i` 取在数学上等价，代价是每个元素多一次整数乘法，以及相邻线程读到相隔 4 个元素的地址。GPU 按一组线程发起内存请求，地址相邻时一次事务取完，地址分散时同一趟只能取到一小部分有用的字节。复制一次只付一遍读写，之后所有 kernel 都能用最简的地址公式。
+让 kernel 自己按 `j*4+i` 读取，可以直接处理这个视图。它改变寻址指令和相邻线程的请求地址；实际指令数量取决于实现与编译结果，实际传输量还取决于事务粒度和缓存驻留。另一种做法是先复制一次，换取后续算子的连续访问；两者的取舍需要计入复制与所有使用者的成本。
 
 对这个项目，这条规则落在 `quantize.py` 的边界上：四个输入都过一遍 `mx.contiguous`。模型里的激活与量化权重通常已经连续，所以多数调用是空操作；它防的是有人把切片或转置的视图直接传进来。
+
+## 把一次 array 求值核对到 GPU 命令
+
+前面的对象关系可以通过 Axpby 捕获直接检查。`4_axpby_capture.py` 创建两个 `4096×4096` float32 输入，各占 64 MiB；连续布局传入 `(x,y)`，转置布局传入 `(x,y.T)`。两组输出各占 64 MiB，转置视图仍共享 y 原缓冲。输入先求值并预热三次，再捕获一次 `ext.axpby` 和 `mx.eval`，捕获结束后比较结果与 `x+yy`。
+
+```sh
+CAPTURE_DIR="$(mktemp -d "${TMPDIR%/}/axpby-lifecycle.XXXXXX")"
+MTL_CAPTURE_ENABLED=1 PYTHONPATH=src/extensions pdm run python \
+  probes/week2/day1/4_axpby_capture.py --layout transpose \
+  --trace "$CAPTURE_DIR/transpose.gputrace"
+gpudebug --json --oneshot -t "$CAPTURE_DIR/transpose.gputrace" --timeout 120 \
+  -c 'go /commands' -c 'go cb0' -c 'go ce0' \
+  -c 'info disp0' -c 'go disp0/compute'
+```
+
+`commands` 下的 `cb0` 是一次提交的 command buffer，`ce0` 是其计算 encoder，`disp0` 是一条派发。`go` 列出子节点；导航名称以本次 trace 实际列出的内容为准。compute 子树列出绑定槽，前三槽是输入 x、输入 y、输出 out。转置组另有内联的 shape、strides、ndim。2026-11-17 本机捕获实际包含一个计算 dispatch，名称为 `axpby_general_float32`，线程网格为 `16777216×1×1`、单组 `1024×1×1`；导出槽 6、7 按 int64 解码，分别得到 `(4096,1)` 与 `(1,4096)`。这将 array 的视图元数据接到了 GPU 读取规则。
+
+捕获边界还暴露了 command buffer 的生命周期。MLX 0.32.4 提交后预先创建下一只 buffer，因而预热完成时已有一只在捕获外创建的 buffer。最初只在 `start_capture` 和 `stop_capture` 之间求值，结果正确，trace 却只有同步命令。捕获开始后先 `mx.synchronize()`，提交旧 buffer 并创建捕获内的新 buffer，随后的 Axpby 才进入实际记录。入口已经包含这个动作，原计算代码保持原样。
+
+同一份 trace 还能由 `gpudebug` 重放并读取编译后 shader 数据：
+
+```sh
+gpudebug --json --oneshot -t "$CAPTURE_DIR/transpose.gputrace" --timeout 1800 \
+  -c 'profile run --gpu-state default --exec serial --embed' -c 'wait'
+gpudebug --json --oneshot -t "$CAPTURE_DIR/transpose.gputrace" --timeout 120 \
+  -c 'profile load' \
+  -c 'info /performance/timeline' \
+  -c 'info /performance/shaders/comp0'
+```
+
+`--embed` 保存分析到 trace，重新打开后的 `profile load` 加载该数据；本机实测中，采集成功后立即访问性能子树曾返回空内容，重新加载后读数完整。timeline 的 GPU time 描述重放范围，shader 的 Instructions 和寄存器字段描述编译后的实现。连续路径实际报告 7 条指令、3 个临时寄存器，general 报告 118 条指令、16 个临时寄存器。general 的整除、取余与 strides 换算给出了额外指令的源码来源；这些字段分别于完整矩阵的动态执行总数和物理访存量解释。
+
+本次单次重放 GPU time 为连续 2.2706 ms、转置 3.5630 ms；普通 bench 另一次运行的平均墙钟为 2.6020 ms 与 3.0463 ms。捕获重放与普通调用处于不同测量条件，求值生命周期相同，计时范围与资源状态各自记录。原始命令报告、参数二进制与 metadata 保存在 `docs/evidence/axpby-kernels/`；完整捕获、加载、计数器解释见 `docs/metal-counter-investigation.md`。
 
 ## 与别的框架的差别
 

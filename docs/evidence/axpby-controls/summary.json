@@ -1,0 +1,800 @@
+{
+  "scope": "Direct Metal dispatch of the existing compiled Axpby kernels. New harness, deterministic bounded float inputs; excludes MLX graph and allocator overhead.",
+  "trace_root": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-controls.Bynlt3/run1",
+  "runs": {
+    "run1": {
+      "validation_enabled": false,
+      "device": "Apple M4",
+      "os": "Version 27.2.1 (Build 26B131)",
+      "summary": {
+        "B_general_contiguous": {
+          "wall_ms": {
+            "mean": 2.7269674166666666,
+            "min": 2.290333,
+            "p10": 2.3595,
+            "p90": 3.531125,
+            "max": 4.623417,
+            "median": 2.492667
+          },
+          "gpu_ms": {
+            "mean": 2.4312604179916284,
+            "min": 2.020999963860959,
+            "p10": 2.0606666221283376,
+            "p90": 3.2241250155493617,
+            "max": 4.373374977149069,
+            "median": 2.2156041814014316
+          }
+        },
+        "C_general_transpose": {
+          "wall_ms": {
+            "mean": 3.197254916666667,
+            "min": 2.895416,
+            "p10": 2.933125,
+            "p90": 3.686792,
+            "max": 4.659083,
+            "median": 3.0258335
+          },
+          "gpu_ms": {
+            "mean": 2.9004242989079407,
+            "min": 2.5916249724105,
+            "p10": 2.6339999749325216,
+            "p90": 3.4396249684505165,
+            "max": 4.306666669435799,
+            "median": 2.7267916593700647
+          }
+        },
+        "A_contiguous": {
+          "wall_ms": {
+            "mean": 2.533319399999999,
+            "min": 2.292166,
+            "p10": 2.345875,
+            "p90": 2.74075,
+            "max": 3.584917,
+            "median": 2.4674164999999997
+          },
+          "gpu_ms": {
+            "mean": 2.239618747262284,
+            "min": 2.0173750235699117,
+            "p10": 2.0542499842122197,
+            "p90": 2.445541671477258,
+            "max": 3.291666624136269,
+            "median": 2.176729147322476
+          }
+        }
+      },
+      "gpu_median_ratios": {
+        "B/A": 1.0178593804960872,
+        "C/B": 1.2307214809665563,
+        "C/A": 1.252701404179846
+      }
+    },
+    "run2-validation": {
+      "validation_enabled": true,
+      "device": "Apple M4",
+      "os": "Version 27.2.1 (Build 26B131)",
+      "summary": {
+        "B_general_contiguous": {
+          "wall_ms": {
+            "mean": 3.2951527833333336,
+            "min": 2.294584,
+            "p10": 2.562917,
+            "p90": 4.489208,
+            "max": 6.234667,
+            "median": 3.085229
+          },
+          "gpu_ms": {
+            "mean": 2.7341520869716383,
+            "min": 2.0287500228732824,
+            "p10": 2.2741249995306134,
+            "p90": 3.4072500420734286,
+            "max": 5.44725003419444,
+            "median": 2.589416690170765
+          }
+        },
+        "C_general_transpose": {
+          "wall_ms": {
+            "mean": 3.8138035833333332,
+            "min": 2.904833,
+            "p10": 3.126042,
+            "p90": 4.920084,
+            "max": 8.169417,
+            "median": 3.478396
+          },
+          "gpu_ms": {
+            "mean": 3.24207708472386,
+            "min": 2.6383750373497605,
+            "p10": 2.8366250335238874,
+            "p90": 4.196499998215586,
+            "max": 5.901124968659133,
+            "median": 3.004270838573575
+          }
+        },
+        "A_contiguous": {
+          "wall_ms": {
+            "mean": 3.3543917333333337,
+            "min": 2.381916,
+            "p10": 2.548083,
+            "p90": 4.603042,
+            "max": 5.783667,
+            "median": 3.143167
+          },
+          "gpu_ms": {
+            "mean": 2.7900326385861263,
+            "min": 2.115874958690256,
+            "p10": 2.2603750112466514,
+            "p90": 3.65874997805804,
+            "max": 4.705875006038696,
+            "median": 2.6697916619013995
+          }
+        }
+      },
+      "gpu_median_ratios": {
+        "B/A": 0.9698946652363907,
+        "C/B": 1.1602114290749597,
+        "C/A": 1.1252828756060924
+      }
+    },
+    "run3": {
+      "validation_enabled": false,
+      "device": "Apple M4",
+      "os": "Version 27.2.1 (Build 26B131)",
+      "summary": {
+        "B_general_contiguous": {
+          "wall_ms": {
+            "mean": 2.510078450000001,
+            "min": 2.254375,
+            "p10": 2.298167,
+            "p90": 2.924,
+            "max": 4.290375,
+            "median": 2.4081045
+          },
+          "gpu_ms": {
+            "mean": 2.2291458318553246,
+            "min": 1.9892500131390989,
+            "p10": 2.0180416759103537,
+            "p90": 2.6541250408627093,
+            "max": 3.9622500189580023,
+            "median": 2.1414791408460587
+          }
+        },
+        "C_general_transpose": {
+          "wall_ms": {
+            "mean": 3.141616,
+            "min": 2.859709,
+            "p10": 2.889416,
+            "p90": 4.073083,
+            "max": 4.447875,
+            "median": 2.9798755
+          },
+          "gpu_ms": {
+            "mean": 2.8538520845662183,
+            "min": 2.583833353128284,
+            "p10": 2.6077500078827143,
+            "p90": 3.78979166271165,
+            "max": 4.194166627712548,
+            "median": 2.690729161258787
+          }
+        },
+        "A_contiguous": {
+          "wall_ms": {
+            "mean": 2.556996483333333,
+            "min": 2.254042,
+            "p10": 2.308167,
+            "p90": 3.21,
+            "max": 3.784583,
+            "median": 2.4149165000000004
+          },
+          "gpu_ms": {
+            "mean": 2.277231947906936,
+            "min": 1.9761666771955788,
+            "p10": 2.029958297498524,
+            "p90": 2.8788333293050528,
+            "max": 3.51837498601526,
+            "median": 2.145895821740851
+          }
+        }
+      },
+      "gpu_median_ratios": {
+        "B/A": 0.997941800878661,
+        "C/B": 1.256481611208097,
+        "C/A": 1.2538955218599297
+      }
+    }
+  },
+  "profiles": {
+    "A_contiguous": {
+      "timeline": {
+        "Commands": "1",
+        "Consistent state": "yes",
+        "Cores": "6 sampled / 10 total",
+        "Encoders": "1",
+        "Frame begin": "0 ns",
+        "Frame duration": "2.3132 ms",
+        "Frame end": "2313208 ns",
+        "GPU time": "2.3132 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "shader": {
+        "ALU": "2",
+        "Branch": "0",
+        "Cost": "100.00%",
+        "Device atomics": "0",
+        "Device loads": "2",
+        "Device stores": "1",
+        "FP16": "0",
+        "FP32": "2",
+        "Instructions": "7",
+        "INT16": "0",
+        "INT32": "0",
+        "Invocations": "1",
+        "SIMD groups": "310026",
+        "Spilled bytes": "0",
+        "Stage": "compute",
+        "Temp registers": "3",
+        "Texture reads": "0",
+        "Texture writes": "0",
+        "Threadgroup atomics": "0",
+        "Threadgroup loads": "0",
+        "Threadgroup memory (bytes)": "0",
+        "Threadgroup stores": "0",
+        "Uniform registers": "16",
+        "Wait": "0"
+      },
+      "counters": {
+        "Integer and Complex Limiter": {
+          "Description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "Name": "Integer and Complex Limiter",
+          "Scope": "timeline",
+          "Value": "0.00% Percentage of Peak Integer and Complex Performance"
+        },
+        "Integer and Conditional Limiter": {
+          "Description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "Name": "Integer and Conditional Limiter",
+          "Scope": "timeline",
+          "Value": "0.54% Percentage of Peak Integer and Conditional Performance"
+        },
+        "Last Level Cache Limiter": {
+          "Description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Limiter",
+          "Scope": "timeline",
+          "Value": "30.73% Percentage of Peak Cache Performance"
+        },
+        "Last Level Cache Utilization": {
+          "Description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Utilization",
+          "Scope": "timeline",
+          "Value": "16.34% Percentage of Peak Cache Performance"
+        },
+        "Address Generation Limiter": {
+          "Description": "Address Generation Limiter",
+          "Name": "Address Generation Limiter",
+          "Scope": "timeline",
+          "Value": "3.23% Percentage of Peak Performance"
+        },
+        "GPU Read Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "Name": "GPU Read Bandwidth",
+          "Scope": "timeline",
+          "Value": "54.27 GiB / Second"
+        },
+        "GPU Write Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "Name": "GPU Write Bandwidth",
+          "Scope": "timeline",
+          "Value": "27.82 GiB / Second"
+        }
+      }
+    },
+    "B_general_contiguous": {
+      "timeline": {
+        "Commands": "1",
+        "Consistent state": "yes",
+        "Cores": "4 sampled / 10 total",
+        "Encoders": "1",
+        "Frame begin": "0 ns",
+        "Frame duration": "2.6910 ms",
+        "Frame end": "2690958 ns",
+        "GPU time": "2.6910 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "shader": {
+        "ALU": "97",
+        "Branch": "4",
+        "Cost": "100.00%",
+        "Device atomics": "0",
+        "Device loads": "6",
+        "Device stores": "1",
+        "FP16": "0",
+        "FP32": "18",
+        "Instructions": "118",
+        "INT16": "23",
+        "INT32": "24",
+        "Invocations": "1",
+        "SIMD groups": "209514",
+        "Spilled bytes": "0",
+        "Stage": "compute",
+        "Temp registers": "16",
+        "Texture reads": "0",
+        "Texture writes": "0",
+        "Threadgroup atomics": "0",
+        "Threadgroup loads": "0",
+        "Threadgroup memory (bytes)": "0",
+        "Threadgroup stores": "0",
+        "Uniform registers": "28",
+        "Wait": "0"
+      },
+      "counters": {
+        "Integer and Complex Limiter": {
+          "Description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "Name": "Integer and Complex Limiter",
+          "Scope": "timeline",
+          "Value": "85.16% Percentage of Peak Integer and Complex Performance"
+        },
+        "Integer and Conditional Limiter": {
+          "Description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "Name": "Integer and Conditional Limiter",
+          "Scope": "timeline",
+          "Value": "51.10% Percentage of Peak Integer and Conditional Performance"
+        },
+        "Last Level Cache Limiter": {
+          "Description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Limiter",
+          "Scope": "timeline",
+          "Value": "14.05% Percentage of Peak Cache Performance"
+        },
+        "Last Level Cache Utilization": {
+          "Description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Utilization",
+          "Scope": "timeline",
+          "Value": "14.05% Percentage of Peak Cache Performance"
+        },
+        "Address Generation Limiter": {
+          "Description": "Address Generation Limiter",
+          "Name": "Address Generation Limiter",
+          "Scope": "timeline",
+          "Value": "10.36% Percentage of Peak Performance"
+        },
+        "GPU Read Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "Name": "GPU Read Bandwidth",
+          "Scope": "timeline",
+          "Value": "46.51 GiB / Second"
+        },
+        "GPU Write Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "Name": "GPU Write Bandwidth",
+          "Scope": "timeline",
+          "Value": "23.88 GiB / Second"
+        }
+      }
+    },
+    "C_general_transpose": {
+      "timeline": {
+        "Commands": "1",
+        "Consistent state": "yes",
+        "Cores": "5 sampled / 10 total",
+        "Encoders": "1",
+        "Frame begin": "0 ns",
+        "Frame duration": "3.4527 ms",
+        "Frame end": "3452750 ns",
+        "GPU time": "3.4527 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "shader": {
+        "ALU": "97",
+        "Branch": "4",
+        "Cost": "100.00%",
+        "Device atomics": "0",
+        "Device loads": "6",
+        "Device stores": "1",
+        "FP16": "0",
+        "FP32": "18",
+        "Instructions": "118",
+        "INT16": "23",
+        "INT32": "24",
+        "Invocations": "1",
+        "SIMD groups": "261258",
+        "Spilled bytes": "0",
+        "Stage": "compute",
+        "Temp registers": "16",
+        "Texture reads": "0",
+        "Texture writes": "0",
+        "Threadgroup atomics": "0",
+        "Threadgroup loads": "0",
+        "Threadgroup memory (bytes)": "0",
+        "Threadgroup stores": "0",
+        "Uniform registers": "28",
+        "Wait": "0"
+      },
+      "counters": {
+        "Integer and Complex Limiter": {
+          "Description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "Name": "Integer and Complex Limiter",
+          "Scope": "timeline",
+          "Value": "66.06% Percentage of Peak Integer and Complex Performance"
+        },
+        "Integer and Conditional Limiter": {
+          "Description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "Name": "Integer and Conditional Limiter",
+          "Scope": "timeline",
+          "Value": "39.26% Percentage of Peak Integer and Conditional Performance"
+        },
+        "Last Level Cache Limiter": {
+          "Description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Limiter",
+          "Scope": "timeline",
+          "Value": "66.94% Percentage of Peak Cache Performance"
+        },
+        "Last Level Cache Utilization": {
+          "Description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Utilization",
+          "Scope": "timeline",
+          "Value": "61.15% Percentage of Peak Cache Performance"
+        },
+        "Address Generation Limiter": {
+          "Description": "Address Generation Limiter",
+          "Name": "Address Generation Limiter",
+          "Scope": "timeline",
+          "Value": "20.19% Percentage of Peak Performance"
+        },
+        "GPU Read Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "Name": "GPU Read Bandwidth",
+          "Scope": "timeline",
+          "Value": "36.28 GiB / Second"
+        },
+        "GPU Write Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "Name": "GPU Write Bandwidth",
+          "Scope": "timeline",
+          "Value": "18.79 GiB / Second"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "B_general_contiguous": {
+      "5": [
+        4096,
+        4096
+      ],
+      "6": [
+        4096,
+        1
+      ],
+      "7": [
+        4096,
+        1
+      ],
+      "8": [
+        2
+      ]
+    },
+    "C_general_transpose": {
+      "5": [
+        4096,
+        4096
+      ],
+      "6": [
+        4096,
+        1
+      ],
+      "7": [
+        1,
+        4096
+      ],
+      "8": [
+        2
+      ]
+    }
+  },
+  "source_sha256": {
+    "probes/week2/day1/4_axpby_control.mm": "d6332adccbef9587d602ad2b07896a80e46b9588622daaaa4e1517b497f121f0",
+    "src/extensions/src/axpby.cpp": "42b3657468efdb8d29695e9fb61d682f83480948fff19bf1f553ad863269b91f",
+    "src/extensions/src/axpby.metal": "503d9a90a09cab4af5a85d5e70ed3b1b2c77e3b019cfb13b70c590661cb07804",
+    "src/extensions/tiny_llm_ext/tiny_llm_ext.metallib": "378eb1ccaec41402c65631c60dd287dfdca4631461171d060f76fcce2b2a8cd5"
+  },
+  "commands": {
+    "compile": "clang++ -O2 -fobjc-arc -std=c++17 -Wall -Wextra -framework Metal -framework Foundation probes/week2/day1/4_axpby_control.mm -o /path/to/control",
+    "run": "MTL_CAPTURE_ENABLED=1 /path/to/control src/extensions/tiny_llm_ext/tiny_llm_ext.metallib /new/output/dir 60",
+    "profile_run": "gpudebug --json --oneshot -t TRACE --timeout 1800 -c 'profile run --gpu-state default --exec serial --embed' -c wait",
+    "profile_read": "gpudebug --json --oneshot -t TRACE --timeout 120 -c 'profile load' -c 'info /performance/timeline' -c 'info /performance/shaders/comp0' -c 'info /performance/timeline/counters/integer_and_complex/integer_and_complex_limiter' -c 'info /performance/timeline/counters/last_level_cache/last_level_cache_limiter'"
+  },
+  "correctness_scope": "All elements checked after the last warmup and after captured dispatch for every case. Timed dispatches are not individually checked.",
+  "capture_state": "Before each captured dispatch CPU initializes out to NaN; timed dispatches reuse out without initialization. Profile replays are a separate experiment, not a decomposition of normal timing.",
+  "order_scope": "Six permutations balance execution positions but not predecessor counts. Samples are sequential; they are not 60 independent process runs.",
+  "timing_interpretation": "Use normal runs 1 and 3 for timing comparison. Run 2 has API Validation enabled. Profiles are one session per case, with different sampled-core coverage.",
+  "stratification": {
+    "run1": {
+      "six_round_blocks": [
+        {
+          "block": 0,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1117916621733457,
+            "B_general_contiguous": 2.6474374753888696,
+            "C_general_transpose": 2.9672291420865804
+          },
+          "B/A": 1.253645197492761,
+          "C/B": 1.1207929062236826
+        },
+        {
+          "block": 1,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1588125091511756,
+            "B_general_contiguous": 2.1006666647735983,
+            "C_general_transpose": 2.857270825188607
+          },
+          "B/A": 0.9730658201529323,
+          "C/B": 1.3601733550127775
+        },
+        {
+          "block": 2,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1916250116191804,
+            "B_general_contiguous": 2.107687498209998,
+            "C_general_transpose": 2.6929583109449595
+          },
+          "B/A": 0.9617007868754112,
+          "C/B": 1.277683865958315
+        },
+        {
+          "block": 3,
+          "median_gpu_ms": {
+            "A_contiguous": 2.073458337690681,
+            "B_general_contiguous": 2.0781458588317037,
+            "C_general_transpose": 2.7211249980609864
+          },
+          "B/A": 1.0022607259841272,
+          "C/B": 1.3094003900143727
+        },
+        {
+          "block": 4,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1378958190325648,
+            "B_general_contiguous": 2.0837708143517375,
+            "C_general_transpose": 2.6560416736174375
+          },
+          "B/A": 0.9746830485382025,
+          "C/B": 1.2746323421579038
+        },
+        {
+          "block": 5,
+          "median_gpu_ms": {
+            "A_contiguous": 2.158229151973501,
+            "B_general_contiguous": 2.4865625018719584,
+            "C_general_transpose": 2.7022499998565763
+          },
+          "B/A": 1.1521309030592173,
+          "C/B": 1.0867412332576567
+        },
+        {
+          "block": 6,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1542291797231883,
+            "B_general_contiguous": 2.1720833610743284,
+            "C_general_transpose": 2.6634791865944862
+          },
+          "B/A": 1.0082879674638119,
+          "C/B": 1.2262324891974266
+        },
+        {
+          "block": 7,
+          "median_gpu_ms": {
+            "A_contiguous": 2.2363750031217933,
+            "B_general_contiguous": 2.4383750278502703,
+            "C_general_transpose": 2.7363124827388674
+          },
+          "B/A": 1.090324755216143,
+          "C/B": 1.122186887367882
+        },
+        {
+          "block": 8,
+          "median_gpu_ms": {
+            "A_contiguous": 2.338624995900318,
+            "B_general_contiguous": 2.2173750039655715,
+            "C_general_transpose": 2.7709583519026637
+          },
+          "B/A": 0.9481532985633432,
+          "C/B": 1.2496570706114478
+        },
+        {
+          "block": 9,
+          "median_gpu_ms": {
+            "A_contiguous": 2.315020828973502,
+            "B_general_contiguous": 2.357250021304935,
+            "C_general_transpose": 2.9094374913256615
+          },
+          "B/A": 1.018241387638036,
+          "C/B": 1.2342507010414807
+        }
+      ],
+      "previous_case": {
+        "A_contiguous": {
+          "A_contiguous": {
+            "count": 9,
+            "median_gpu_ms": 2.1778750233352184
+          },
+          "B_general_contiguous": {
+            "count": 20,
+            "median_gpu_ms": 2.1912291704211384
+          },
+          "C_general_transpose": {
+            "count": 30,
+            "median_gpu_ms": 2.7996874996460974
+          }
+        },
+        "B_general_contiguous": {
+          "A_contiguous": {
+            "count": 20,
+            "median_gpu_ms": 2.1685833344236016
+          },
+          "B_general_contiguous": {
+            "count": 10,
+            "median_gpu_ms": 2.160916686989367
+          },
+          "C_general_transpose": {
+            "count": 30,
+            "median_gpu_ms": 2.708437474211678
+          }
+        },
+        "C_general_transpose": {
+          "A_contiguous": {
+            "count": 30,
+            "median_gpu_ms": 2.176979120122269
+          },
+          "B_general_contiguous": {
+            "count": 30,
+            "median_gpu_ms": 2.32593750115484
+          }
+        }
+      }
+    },
+    "run3": {
+      "six_round_blocks": [
+        {
+          "block": 0,
+          "median_gpu_ms": {
+            "A_contiguous": 2.158583316486329,
+            "B_general_contiguous": 2.1885208261664957,
+            "C_general_transpose": 3.2996250374708325
+          },
+          "B/A": 1.0138690545097413,
+          "C/B": 1.5076964304016212
+        },
+        {
+          "block": 1,
+          "median_gpu_ms": {
+            "A_contiguous": 2.0414166792761534,
+            "B_general_contiguous": 2.0311874977778643,
+            "C_general_transpose": 2.653729170560837
+          },
+          "B/A": 0.9949891751144523,
+          "C/B": 1.3064914851356846
+        },
+        {
+          "block": 2,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1653333387803286,
+            "B_general_contiguous": 2.1456666581798345,
+            "C_general_transpose": 2.726249978877604
+          },
+          "B/A": 0.9909174812726192,
+          "C/B": 1.2705841182200581
+        },
+        {
+          "block": 3,
+          "median_gpu_ms": {
+            "A_contiguous": 2.247479191282764,
+            "B_general_contiguous": 2.1593750279862434,
+            "C_general_transpose": 2.6716458378359675
+          },
+          "B/A": 0.9607986745157651,
+          "C/B": 1.2372310521380114
+        },
+        {
+          "block": 4,
+          "median_gpu_ms": {
+            "A_contiguous": 2.175312489271164,
+            "B_general_contiguous": 2.1848749893251806,
+            "C_general_transpose": 2.715416660066694
+          },
+          "B/A": 1.0043959201729313,
+          "C/B": 1.2428247260523477
+        },
+        {
+          "block": 5,
+          "median_gpu_ms": {
+            "A_contiguous": 2.2027083323337138,
+            "B_general_contiguous": 2.219916641479358,
+            "C_general_transpose": 2.731479180511087
+          },
+          "B/A": 1.0078123412405728,
+          "C/B": 1.2304422289887527
+        },
+        {
+          "block": 6,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1671666763722897,
+            "B_general_contiguous": 2.130541659425944,
+            "C_general_transpose": 2.77847918914631
+          },
+          "B/A": 0.9831000460898311,
+          "C/B": 1.3041186859002547
+        },
+        {
+          "block": 7,
+          "median_gpu_ms": {
+            "A_contiguous": 2.0761041960213333,
+            "B_general_contiguous": 2.0210625079926103,
+            "C_general_transpose": 2.6473125035408884
+          },
+          "B/A": 0.9734879934570695,
+          "C/B": 1.3098617648250233
+        },
+        {
+          "block": 8,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1203125070314854,
+            "B_general_contiguous": 2.0917083602398634,
+            "C_general_transpose": 2.6225624897051603
+          },
+          "B/A": 0.9865094665542161,
+          "C/B": 1.2537897440943546
+        },
+        {
+          "block": 9,
+          "median_gpu_ms": {
+            "A_contiguous": 2.1115833369549364,
+            "B_general_contiguous": 2.0522291597444564,
+            "C_general_transpose": 2.6242708263453096
+          },
+          "B/A": 0.9718911509805371,
+          "C/B": 1.278741613179341
+        }
+      ],
+      "previous_case": {
+        "A_contiguous": {
+          "A_contiguous": {
+            "count": 9,
+            "median_gpu_ms": 2.1006250171922147
+          },
+          "B_general_contiguous": {
+            "count": 20,
+            "median_gpu_ms": 2.151749999029562
+          },
+          "C_general_transpose": {
+            "count": 30,
+            "median_gpu_ms": 2.684229169972241
+          }
+        },
+        "B_general_contiguous": {
+          "A_contiguous": {
+            "count": 20,
+            "median_gpu_ms": 2.1203125070314854
+          },
+          "B_general_contiguous": {
+            "count": 10,
+            "median_gpu_ms": 2.0877916540484875
+          },
+          "C_general_transpose": {
+            "count": 30,
+            "median_gpu_ms": 2.7099375147372484
+          }
+        },
+        "C_general_transpose": {
+          "A_contiguous": {
+            "count": 30,
+            "median_gpu_ms": 2.1643333311658353
+          },
+          "B_general_contiguous": {
+            "count": 30,
+            "median_gpu_ms": 2.1453124936670065
+          }
+        }
+      }
+    }
+  }
+}

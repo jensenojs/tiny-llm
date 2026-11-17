@@ -1,0 +1,91 @@
+1 profiling session:
+  [0] Apple M4 [perf-state: medium, serial, 2026-11-17 14:24, 00008132-000610D43483001C]
+{"notification":"Profile data loaded.","op":1,"elapsed_ms":2723,"success":true}
+{"children":[{"actions":"go","name":"cb0","values":[{"type":"string","value":"1 encoder"},{"type":"string","value":"\"Axpby controls\""}]}],"totalCount":1}
+{"children":[{"actions":"go","name":"ce0","values":[{"type":"string","value":"\"C_general_transpose (2)\""},{"type":"string","value":"1 dispatch"}]}],"totalCount":1}
+{"children":[{"actions":"go, info","name":"disp0","values":[{"type":"string","value":"\"axpby_general_float32\""},{"type":"string","value":"16777216x1x1"}]}],"links":{"pe":"performance\/encoders\/ce0","pt":"performance\/timeline\/encoders\/ce0"},"totalCount":1}
+{
+  "text" : "-[MTLComputeCommandEncoder dispatchThreads:threadsPerThreadgroup:]",
+  "threadsPerGrid" : "16777216x1x1",
+  "threadsPerThreadgroup" : "1024x1x1"
+}
+{
+  "Commands" : "1",
+  "Consistent state" : "yes",
+  "Cores" : "5 sampled \/ 10 total",
+  "Encoders" : "1",
+  "Frame begin" : "0 ns",
+  "Frame duration" : "3.4527 ms",
+  "Frame end" : "3452750 ns",
+  "GPU time" : "3.4527 ms",
+  "Overlap" : "yes",
+  "Profiled state" : "default"
+}
+{
+  "ALU" : "97",
+  "Branch" : "4",
+  "Cost" : "100.00%",
+  "Device atomics" : "0",
+  "Device loads" : "6",
+  "Device stores" : "1",
+  "FP16" : "0",
+  "FP32" : "18",
+  "Instructions" : "118",
+  "INT16" : "23",
+  "INT32" : "24",
+  "Invocations" : "1",
+  "SIMD groups" : "261258",
+  "Spilled bytes" : "0",
+  "Stage" : "compute",
+  "Temp registers" : "16",
+  "Texture reads" : "0",
+  "Texture writes" : "0",
+  "Threadgroup atomics" : "0",
+  "Threadgroup loads" : "0",
+  "Threadgroup memory (bytes)" : "0",
+  "Threadgroup stores" : "0",
+  "Uniform registers" : "28",
+  "Wait" : "0"
+}
+{
+  "Description" : "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+  "Name" : "Integer and Complex Limiter",
+  "Scope" : "timeline",
+  "Value" : "66.06% Percentage of Peak Integer and Complex Performance"
+}
+{
+  "Description" : "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+  "Name" : "Integer and Conditional Limiter",
+  "Scope" : "timeline",
+  "Value" : "39.26% Percentage of Peak Integer and Conditional Performance"
+}
+{
+  "Description" : "Measures the time during which GPU’s last level cache is attempting to service read and write requests as a percentage of cache’s peak performance",
+  "Name" : "Last Level Cache Limiter",
+  "Scope" : "timeline",
+  "Value" : "66.94% Percentage of Peak Cache Performance"
+}
+{
+  "Description" : "Measures the time during which GPU’s last level cache serviced read and write requests as a percentage of cache’s peak performance",
+  "Name" : "Last Level Cache Utilization",
+  "Scope" : "timeline",
+  "Value" : "61.15% Percentage of Peak Cache Performance"
+}
+{
+  "Description" : "Address Generation Limiter",
+  "Name" : "Address Generation Limiter",
+  "Scope" : "timeline",
+  "Value" : "20.19% Percentage of Peak Performance"
+}
+{
+  "Description" : "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+  "Name" : "GPU Read Bandwidth",
+  "Scope" : "timeline",
+  "Value" : "36.28 GiB \/ Second"
+}
+{
+  "Description" : "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+  "Name" : "GPU Write Bandwidth",
+  "Scope" : "timeline",
+  "Value" : "18.79 GiB \/ Second"
+}

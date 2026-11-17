@@ -1,0 +1,282 @@
+{
+  "recorded_on": "2026-11-17",
+  "kind": "one-dispatch traces replayed separately, one profiling session per trace",
+  "requested_replay_options": {
+    "gpu_state": "default",
+    "exec": "serial"
+  },
+  "groups": {
+    "contiguous": {
+      "capture": {
+        "layout": "contiguous",
+        "shape": [
+          4096,
+          4096
+        ],
+        "dtype": "float32",
+        "alpha": 1.0,
+        "beta": 1.0,
+        "seed": 0,
+        "warmup_calls": 3,
+        "captured_calls": 1,
+        "capture_boundary": "start_capture -> synchronize -> axpby -> eval -> stop_capture",
+        "expected_kernel": "axpby_contiguous_float32",
+        "trace": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-kernels.8D8YU0/contiguous-verified.gputrace",
+        "correct": true,
+        "mlx_version": "0.32.4",
+        "macos": "27.2.1",
+        "device": {
+          "device_name": "Apple M4",
+          "max_recommended_working_set_size": 12713115648,
+          "memory_size": 17179869184,
+          "architecture": "applegpu_g16g",
+          "max_buffer_length": 9534832640,
+          "resource_limit": 499000
+        },
+        "source_sha256": {
+          "probes/week2/day1/4_axpby_capture.py": "617c4ecfc000d8dcb7be9db57a6c2a5838dc8e74b7d6ed2eeabe07f158a9011e",
+          "src/extensions/src/axpby.cpp": "42b3657468efdb8d29695e9fb61d682f83480948fff19bf1f553ad863269b91f",
+          "src/extensions/src/axpby.metal": "503d9a90a09cab4af5a85d5e70ed3b1b2c77e3b019cfb13b70c590661cb07804"
+        }
+      },
+      "timeline": {
+        "Commands": "1",
+        "Consistent state": "yes",
+        "Cores": "3 sampled / 10 total",
+        "Encoders": "1",
+        "Frame begin": "0 ns",
+        "Frame duration": "2.2706 ms",
+        "Frame end": "2270583 ns",
+        "GPU time": "2.2706 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "shader_overview": {
+        "ALU": "2",
+        "Branch": "0",
+        "Cost": "100.00%",
+        "Device atomics": "0",
+        "Device loads": "2",
+        "Device stores": "1",
+        "FP16": "0",
+        "FP32": "2",
+        "Instructions": "7",
+        "INT16": "0",
+        "INT32": "0",
+        "Invocations": "1",
+        "SIMD groups": "153802",
+        "Spilled bytes": "0",
+        "Stage": "compute",
+        "Temp registers": "3",
+        "Texture reads": "0",
+        "Texture writes": "0",
+        "Threadgroup atomics": "0",
+        "Threadgroup loads": "0",
+        "Threadgroup memory (bytes)": "0",
+        "Threadgroup stores": "0",
+        "Uniform registers": "16",
+        "Wait": "0"
+      },
+      "dispatch": {
+        "text": "-[MTLComputeCommandEncoder dispatchThreads:threadsPerThreadgroup:]",
+        "threadsPerGrid": "16777216x1x1",
+        "threadsPerThreadgroup": "1024x1x1"
+      },
+      "counters": {
+        "Integer and Complex Limiter": {
+          "Description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "Name": "Integer and Complex Limiter",
+          "Scope": "timeline",
+          "Value": "0.00% Percentage of Peak Integer and Complex Performance"
+        },
+        "Integer and Conditional Limiter": {
+          "Description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "Name": "Integer and Conditional Limiter",
+          "Scope": "timeline",
+          "Value": "0.55% Percentage of Peak Integer and Conditional Performance"
+        },
+        "Last Level Cache Limiter": {
+          "Description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Limiter",
+          "Scope": "timeline",
+          "Value": "31.17% Percentage of Peak Cache Performance"
+        },
+        "Last Level Cache Utilization": {
+          "Description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Utilization",
+          "Scope": "timeline",
+          "Value": "17.06% Percentage of Peak Cache Performance"
+        },
+        "GPU Read Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "Name": "GPU Read Bandwidth",
+          "Scope": "timeline",
+          "Value": "55.34 GiB / Second"
+        },
+        "GPU Write Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "Name": "GPU Write Bandwidth",
+          "Scope": "timeline",
+          "Value": "30.40 GiB / Second"
+        }
+      },
+      "trace_package": {
+        "path": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-kernels.8D8YU0/contiguous-verified.gputrace",
+        "file_bytes": 524076503,
+        "entries": 48,
+        "manifest_sha256": "a0cbdd38b5660993ce6d56ccda9cc9f59b671853811756fd574088ab70942786"
+      }
+    },
+    "transpose": {
+      "capture": {
+        "layout": "transpose",
+        "shape": [
+          4096,
+          4096
+        ],
+        "dtype": "float32",
+        "alpha": 1.0,
+        "beta": 1.0,
+        "seed": 0,
+        "warmup_calls": 3,
+        "captured_calls": 1,
+        "capture_boundary": "start_capture -> synchronize -> axpby -> eval -> stop_capture",
+        "expected_kernel": "axpby_general_float32",
+        "trace": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-kernels.8D8YU0/transpose-verified.gputrace",
+        "correct": true,
+        "mlx_version": "0.32.4",
+        "macos": "27.2.1",
+        "device": {
+          "device_name": "Apple M4",
+          "max_recommended_working_set_size": 12713115648,
+          "memory_size": 17179869184,
+          "architecture": "applegpu_g16g",
+          "max_buffer_length": 9534832640,
+          "resource_limit": 499000
+        },
+        "source_sha256": {
+          "probes/week2/day1/4_axpby_capture.py": "617c4ecfc000d8dcb7be9db57a6c2a5838dc8e74b7d6ed2eeabe07f158a9011e",
+          "src/extensions/src/axpby.cpp": "42b3657468efdb8d29695e9fb61d682f83480948fff19bf1f553ad863269b91f",
+          "src/extensions/src/axpby.metal": "503d9a90a09cab4af5a85d5e70ed3b1b2c77e3b019cfb13b70c590661cb07804"
+        }
+      },
+      "timeline": {
+        "Commands": "1",
+        "Consistent state": "yes",
+        "Cores": "3 sampled / 10 total",
+        "Encoders": "1",
+        "Frame begin": "0 ns",
+        "Frame duration": "3.5630 ms",
+        "Frame end": "3563000 ns",
+        "GPU time": "3.5630 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "shader_overview": {
+        "ALU": "97",
+        "Branch": "4",
+        "Cost": "100.00%",
+        "Device atomics": "0",
+        "Device loads": "6",
+        "Device stores": "1",
+        "FP16": "0",
+        "FP32": "18",
+        "Instructions": "118",
+        "INT16": "23",
+        "INT32": "24",
+        "Invocations": "1",
+        "SIMD groups": "156650",
+        "Spilled bytes": "0",
+        "Stage": "compute",
+        "Temp registers": "16",
+        "Texture reads": "0",
+        "Texture writes": "0",
+        "Threadgroup atomics": "0",
+        "Threadgroup loads": "0",
+        "Threadgroup memory (bytes)": "0",
+        "Threadgroup stores": "0",
+        "Uniform registers": "28",
+        "Wait": "0"
+      },
+      "dispatch": {
+        "text": "-[MTLComputeCommandEncoder dispatchThreads:threadsPerThreadgroup:]",
+        "threadsPerGrid": "16777216x1x1",
+        "threadsPerThreadgroup": "1024x1x1"
+      },
+      "counters": {
+        "Integer and Complex Limiter": {
+          "Description": "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+          "Name": "Integer and Complex Limiter",
+          "Scope": "timeline",
+          "Value": "63.85% Percentage of Peak Integer and Complex Performance"
+        },
+        "Integer and Conditional Limiter": {
+          "Description": "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+          "Name": "Integer and Conditional Limiter",
+          "Scope": "timeline",
+          "Value": "37.92% Percentage of Peak Integer and Conditional Performance"
+        },
+        "Last Level Cache Limiter": {
+          "Description": "Measures the time during which GPU\u2019s last level cache is attempting to service read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Limiter",
+          "Scope": "timeline",
+          "Value": "65.56% Percentage of Peak Cache Performance"
+        },
+        "Last Level Cache Utilization": {
+          "Description": "Measures the time during which GPU\u2019s last level cache serviced read and write requests as a percentage of cache\u2019s peak performance",
+          "Name": "Last Level Cache Utilization",
+          "Scope": "timeline",
+          "Value": "59.37% Percentage of Peak Cache Performance"
+        },
+        "GPU Read Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+          "Name": "GPU Read Bandwidth",
+          "Scope": "timeline",
+          "Value": "35.23 GiB / Second"
+        },
+        "GPU Write Bandwidth": {
+          "Description": "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+          "Name": "GPU Write Bandwidth",
+          "Scope": "timeline",
+          "Value": "22.95 GiB / Second"
+        }
+      },
+      "trace_package": {
+        "path": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-kernels.8D8YU0/transpose-verified.gputrace",
+        "file_bytes": 508384745,
+        "entries": 48,
+        "manifest_sha256": "db7451a14fbd9ba68f35287eacc9a1de361484a8df188a0ff429430010ebf658"
+      },
+      "inline_bindings": {
+        "5": {
+          "format": "<2i",
+          "values": [
+            4096,
+            4096
+          ]
+        },
+        "6": {
+          "format": "<2q",
+          "values": [
+            4096,
+            1
+          ]
+        },
+        "7": {
+          "format": "<2q",
+          "values": [
+            1,
+            4096
+          ]
+        },
+        "8": {
+          "format": "<i",
+          "values": [
+            2
+          ]
+        }
+      }
+    }
+  },
+  "gpu_time_ratio_from_displayed_ms": 1.5691887606799966
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "path": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-intervals-run2.xml",
+    "bytes": 1336154555,
+    "sha256": "b0c71c81da33756c92fec5e67de063e45f0ecabbbdbbb8c792baf7b7bfb45bcc"
+  },
+  {
+    "path": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-gpu-run2.xml",
+    "bytes": 9702600,
+    "sha256": "3402db3090272ca676c3dd678d9084848b5ca18c5ccf56c63d843cbf4349784a"
+  },
+  {
+    "path": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-counter-info-run2.xml",
+    "bytes": 45948,
+    "sha256": "f429aac7ae040424e302fde70dcf4b58bdd7a9dbf24401a859cc7844d88eaea7"
+  },
+  {
+    "path": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-encoders-run2.xml",
+    "bytes": 59693,
+    "sha256": "f2c8c23952f4287d17f5333f5759e7259c89f570e2e7ca0d363b4ea196f44138"
+  },
+  {
+    "path": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-metal-toc-run2.xml",
+    "bytes": 63414,
+    "sha256": "e21d25bd9a00e5ae51d38d4251c552f3c62364ccf0efec478ebe294e1b83670a"
+  }
+]

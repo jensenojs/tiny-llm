@@ -1,0 +1,32 @@
+{
+  "layout": "transpose",
+  "shape": [
+    4096,
+    4096
+  ],
+  "dtype": "float32",
+  "alpha": 1.0,
+  "beta": 1.0,
+  "seed": 0,
+  "warmup_calls": 3,
+  "captured_calls": 1,
+  "capture_boundary": "start_capture -> synchronize -> axpby -> eval -> stop_capture",
+  "expected_kernel": "axpby_general_float32",
+  "trace": "/private/var/folders/fn/dkhyrt214c7_ksxbck36j49h0000gn/T/opencode/axpby-kernels.8D8YU0/transpose-verified.gputrace",
+  "correct": true,
+  "mlx_version": "0.32.4",
+  "macos": "27.2.1",
+  "device": {
+    "device_name": "Apple M4",
+    "max_recommended_working_set_size": 12713115648,
+    "memory_size": 17179869184,
+    "architecture": "applegpu_g16g",
+    "max_buffer_length": 9534832640,
+    "resource_limit": 499000
+  },
+  "source_sha256": {
+    "probes/week2/day1/4_axpby_capture.py": "617c4ecfc000d8dcb7be9db57a6c2a5838dc8e74b7d6ed2eeabe07f158a9011e",
+    "src/extensions/src/axpby.cpp": "42b3657468efdb8d29695e9fb61d682f83480948fff19bf1f553ad863269b91f",
+    "src/extensions/src/axpby.metal": "503d9a90a09cab4af5a85d5e70ed3b1b2c77e3b019cfb13b70c590661cb07804"
+  }
+}

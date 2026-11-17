@@ -1,0 +1,82 @@
+{"notification":"Profile data loaded.","op":1,"elapsed_ms":2894,"success":true}
+{"children":[{"actions":"go, info","name":"disp0","values":[{"type":"string","value":"\"axpby_contiguous_float32\""},{"type":"string","value":"16777216x1x1"}]}],"links":{"pe":"performance\/encoders\/ce0","pt":"performance\/timeline\/encoders\/ce0"},"totalCount":1}
+{
+  "text" : "-[MTLComputeCommandEncoder dispatchThreads:threadsPerThreadgroup:]",
+  "threadsPerGrid" : "16777216x1x1",
+  "threadsPerThreadgroup" : "1024x1x1"
+}
+{"children":[{"actions":"info, fetch","name":"buf[0]","values":[{"type":"string","value":"\"MTLBuffer 2\""},{"type":"string","value":"@buf1 64.0 MiB"}]},{"actions":"info, fetch","name":"buf[1]","values":[{"type":"string","value":"\"MTLBuffer 1\""},{"type":"string","value":"@buf0 64.0 MiB"}]},{"actions":"fetch","name":"buf[3]","values":[null,{"type":"string","value":"4 bytes (inline)"}]},{"actions":"fetch","name":"buf[4]","values":[null,{"type":"string","value":"4 bytes (inline)"}]},{"actions":"info, fetch","name":"buf[2]","values":[{"type":"string","value":"\"MTLBuffer 3\""},{"type":"string","value":"@buf2 64.0 MiB"}]}],"totalCount":5}
+{
+  "Commands" : "1",
+  "Consistent state" : "yes",
+  "Cores" : "3 sampled \/ 10 total",
+  "Encoders" : "1",
+  "Frame begin" : "0 ns",
+  "Frame duration" : "2.2706 ms",
+  "Frame end" : "2270583 ns",
+  "GPU time" : "2.2706 ms",
+  "Overlap" : "yes",
+  "Profiled state" : "default"
+}
+{
+  "ALU" : "2",
+  "Branch" : "0",
+  "Cost" : "100.00%",
+  "Device atomics" : "0",
+  "Device loads" : "2",
+  "Device stores" : "1",
+  "FP16" : "0",
+  "FP32" : "2",
+  "Instructions" : "7",
+  "INT16" : "0",
+  "INT32" : "0",
+  "Invocations" : "1",
+  "SIMD groups" : "153802",
+  "Spilled bytes" : "0",
+  "Stage" : "compute",
+  "Temp registers" : "3",
+  "Texture reads" : "0",
+  "Texture writes" : "0",
+  "Threadgroup atomics" : "0",
+  "Threadgroup loads" : "0",
+  "Threadgroup memory (bytes)" : "0",
+  "Threadgroup stores" : "0",
+  "Uniform registers" : "16",
+  "Wait" : "0"
+}
+{
+  "Description" : "Measures the time during which Integer and Complex work is attemped to execute as a percentage of peak Integer and Complex performance. A value of 100% indicates Integer and Complex execution pipeline has reached full capacity and cannot process more Integer and Complex instructions in parallel",
+  "Name" : "Integer and Complex Limiter",
+  "Scope" : "timeline",
+  "Value" : "0.00% Percentage of Peak Integer and Complex Performance"
+}
+{
+  "Description" : "Measures the time during which Integer and Conditional work is executed as a percentage of peak Integer and Conditional performance. A value of 100% indicates Integer and Conditional execution pipeline has reached full capacity and cannot process more Integer and Conditional instructions in parallel",
+  "Name" : "Integer and Conditional Limiter",
+  "Scope" : "timeline",
+  "Value" : "0.55% Percentage of Peak Integer and Conditional Performance"
+}
+{
+  "Description" : "Measures the time during which GPU’s last level cache is attempting to service read and write requests as a percentage of cache’s peak performance",
+  "Name" : "Last Level Cache Limiter",
+  "Scope" : "timeline",
+  "Value" : "31.17% Percentage of Peak Cache Performance"
+}
+{
+  "Description" : "Measures the time during which GPU’s last level cache serviced read and write requests as a percentage of cache’s peak performance",
+  "Name" : "Last Level Cache Utilization",
+  "Scope" : "timeline",
+  "Value" : "17.06% Percentage of Peak Cache Performance"
+}
+{
+  "Description" : "Measures how much memory, in gigabytes per second, are read by the GPU from a memory external to the GPU (potentially device memory)",
+  "Name" : "GPU Read Bandwidth",
+  "Scope" : "timeline",
+  "Value" : "55.34 GiB \/ Second"
+}
+{
+  "Description" : "Measures how much memory, in gigabytes per second, are written by the GPU to a memory external to the GPU (potentially device memory).",
+  "Name" : "GPU Write Bandwidth",
+  "Scope" : "timeline",
+  "Value" : "30.40 GiB \/ Second"
+}
