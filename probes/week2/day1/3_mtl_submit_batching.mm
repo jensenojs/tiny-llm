@@ -134,6 +134,10 @@ int main() {
     }
     id<MTLComputePipelineState> ps =
         [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"touch"] error:&err];
+    // `StorageModeShared` 的意思是这块 buffer 对 CPU 和 GPU 用**同一个物理地址**
+    // Apple Silicon 上 CPU 和 GPU 本来就连着同一片内存，不需要 PCIe 拷贝，
+    //「给 GPU 一块显存」实际上只是「划一块内存，把地址告诉 GPU」。
+    // 这就是 `set_data(mx::allocator::malloc(...))` 之后 `set_output_array` 能直接绑地址的原因。
     id<MTLBuffer> buf = [dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
 
     // 预热：第一次提交要建 pipeline 的各种状态，不预热会把一次性成本算进第一组。

@@ -1,7 +1,17 @@
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
+#include "mlx/allocator.h"
+#include "mlx/backend/common/utils.h"
+#include "mlx/backend/cpu/encoder.h"
+#include "mlx/utils.h"
 #include "tiny_llm_ext.h"
+
+#ifdef _METAL_
+#include "mlx/backend/metal/device.h"
+#include "mlx/backend/metal/utils.h"
+#endif
 
 namespace tiny_llm_ext {
 
@@ -118,10 +128,72 @@ void QuantizedMatmul::eval_cpu(const std::vector<mx::array> &, std::vector<mx::a
 
 // Task 3 填这里：inputs[0..3] 依次是 scales、biases、a、b，outputs[0] 是
 // 形状已定、data 为空的输出数组，分配与编码都由这个函数自己做。
-void QuantizedMatmul::eval_gpu(const std::vector<mx::array> &, std::vector<mx::array> &) {
-    checkpoint_todo("QuantizedMatmul::eval_gpu", "Week 2, Day 2");
-}
+void QuantizedMatmul::eval_gpu(const std::vector<mx::array> &inputs, std::vector<mx::array> &outputs) {
+#ifdef _METAL_
+    auto &scales = inputs[0];
+    auto &biases = inputs[1];
+    auto &a = inputs[2];
+    auto &b = inputs[3];
+    auto &out = outputs[0];
 
+    // 输出数组只有形状声明, data 为空; 显存由本函数分配, 分配之后 out 才有地方写.
+    out.set_data(mx::allocator::malloc(out.nbytes()));
+
+    // kernel 拿到的是 buffer 基址, 没有形状信息. 循环界与越界判断需要的
+    // 三个长度必须作为标量显式传入: M = 输出行数(a 的行数),
+    // N = 点积长度(a 的列数, 内层循环界), K = 输出列数(b 的行数, 转置存放).
+    const int M = a.shape()[0];
+    const int N = a.shape()[1];
+    const int K = b.shape()[0];
+
+    auto &s = stream();
+    auto &d = mx::metal::device(s.device);
+
+    std::ostringstream kname;
+    kname << "quantized_matmul_vanilla_w4a16_g128";
+
+    auto library = d.get_library("tiny_llm_ext");
+    auto kernel = d.get_kernel(kname.str(), library);
+
+    auto &compute_encoder = mx::metal::get_command_encoder(s);
+    compute_encoder.set_compute_pipeline_state(kernel);
+
+    // 槽位契约: 数组走 set_input/output_array(绑定 buffer 基址),
+    // 标量走 set_bytes. 槽号与 kernel 的 [[buffer(n)]] 一一对应.
+    compute_encoder.set_input_array(scales, 0);
+    compute_encoder.set_input_array(biases, 1);
+    compute_encoder.set_input_array(a, 2);
+    compute_encoder.set_input_array(b, 3);
+    compute_encoder.set_output_array(out, 4);
+    compute_encoder.set_bytes(M, 5);
+    compute_encoder.set_bytes(N, 6);
+    compute_encoder.set_bytes(K, 7);
+
+    // dispatch_threadgroups: 第一参数是组数, 第二参数是每组的线程形状。
+    // x 维沿 m、y 维沿 k, 组数按组尺寸向上取整; 驱动不挡越界,
+    // 由 kernel 自己判断 m < M && k < K。
+    //
+    // 组尺寸的两个约束: 不超过 kernel 的硬件上限 tgp_size (Apple GPU ≤ 1024,
+    // 寄存器吃多了会更低), 且尽量填满——组驻留 SM 后按整组占资源,
+    // 半满的组浪费驻留位。
+    //
+    // x_size 是 m 方向的宽度。decode 时 M 常为 1, x 给大了整组都是进来
+    // 就 return 的空线程, 所以 M 小时只给 16, 其余 (y_size = tgp_size/x)
+    // 全给 k 方向干真活; M 大时给 32, m 方向少切几刀。
+    // M=1 时 x_size=1 确实更省, 但 vanilla 的主顾是小 M 的 prefill 区间;
+    // 真正的 decode (M ≤ 8) 在 Task 4 会切给专用 matvec kernel, 组形状
+    // 完全不同。placeholder 阶段 matvec 也路由到这里, M=1 的空转税
+    // 由 Task 4 消灭。
+    const size_t tgp_size = kernel->maxTotalThreadsPerThreadgroup();
+    const int x_size = M <= 16 ? 16 : 32;
+    const int y_size = tgp_size / x_size;
+    compute_encoder.dispatch_threadgroups(
+        MTL::Size((M + x_size - 1) / x_size, (K + y_size - 1) / y_size, 1),
+        MTL::Size(x_size, y_size, 1));
+#else
+    throw std::runtime_error("QuantizedMatmul has no GPU implementation.");
+#endif
+}
 // Week 3, Day 4. The earlier Week 2 checkpoints keep the readable row lookup.
 mx::array quantized_embedding(const mx::array &, const mx::array &, const mx::array &, const mx::array &, int, int,
                               mx::StreamOrDevice) {

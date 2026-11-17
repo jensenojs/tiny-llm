@@ -250,7 +250,11 @@ def quantized_matvec_custom(
     b: mx.array,
     transpose_b: bool = False,
 ) -> mx.array:
-    pass
+    # knockout: 先复用 vanilla kernel 保证语义正确可调用; Task 4 换成专用 matvec kernel。
+    return quantized_matmul(
+        scales, biases, group_size, bits, a, b, transpose_b,
+        use_simdgroup=False, use_split_k=False,
+    )
 
 
 def quantized_matmul_vanilla(
@@ -262,7 +266,10 @@ def quantized_matmul_vanilla(
     b: mx.array,
     transpose_b: bool = False,
 ) -> mx.array:
-    pass
+    return quantized_matmul(
+        scales, biases, group_size, bits, a, b, transpose_b,
+        use_simdgroup=False, use_split_k=False,
+    )
 
 
 def quantized_linear(
