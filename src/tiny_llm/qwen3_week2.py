@@ -9,9 +9,9 @@ from .layer_norm import RMSNorm
 
 import mlx.core as mx
 
-from .embedding import Embedding  # noqa: F401 - learner checkpoint dependency
+from .embedding import Embedding, QuantizedEmbedding  # noqa: F401 - learner checkpoint dependency
 from .kv_cache import TinyKvCache, TinyKvFullCache
-from .quantize import QuantizedWeights, dequantize_linear  # noqa: F401
+from .quantize import QuantizedWeights, dequantize_linear, quantized_linear  # noqa: F401
 from .week2_kernels import (
     FastRMSNorm,  # noqa: F401 - learner checkpoint dependency
     FastRoPE,  # noqa: F401 - learner checkpoint dependency
@@ -95,6 +95,17 @@ def canonical_week2_checkpoint(checkpoint: str) -> str:
     return WEEK2_CHECKPOINT_ALIASES.get(checkpoint, checkpoint)
 
 
+def _linear_maybe_quantized(
+    x: mx.array, w: mx.array | QuantizedWeights
+) -> mx.array:
+    # dense 与 packed 路径的接缝: 权重是 QuantizedWeights 就走量化通道
+    # (quantized_linear 内部按 M 分流 matvec/matmul), 否则走普通 linear。
+    # 每层拿到哪种权重由 checkpoint 在装配时决定, 前向这里不再分支。
+    if isinstance(w, QuantizedWeights):
+        return quantized_linear(x, w)
+    return linear(x, w)
+
+
 class Qwen3MultiHeadAttention:
     def __init__(
         self,
@@ -149,9 +160,15 @@ class Qwen3MultiHeadAttention:
     ) -> mx.array:
         B, L, _ = x.shape
 
-        q = linear(x, self.wq).reshape(B, L, self.num_heads, self.head_dim)
-        k = linear(x, self.wk).reshape(B, L, self.num_kv_heads, self.head_dim)
-        v = linear(x, self.wv).reshape(B, L, self.num_kv_heads, self.head_dim)
+        q = _linear_maybe_quantized(x, self.wq).reshape(
+            B, L, self.num_heads, self.head_dim
+        )
+        k = _linear_maybe_quantized(x, self.wk).reshape(
+            B, L, self.num_kv_heads, self.head_dim
+        )
+        v = _linear_maybe_quantized(x, self.wv).reshape(
+            B, L, self.num_kv_heads, self.head_dim
+        )
 
         q = self.q_norm(q)
         k = self.k_norm(k)
@@ -176,7 +193,7 @@ class Qwen3MultiHeadAttention:
         ).astype(x.dtype)
 
         out = out.transpose(0, 2, 1, 3).reshape(B, L, self.num_heads * self.head_dim)
-        return linear(out, self.wo)
+        return _linear_maybe_quantized(out, self.wo)
 
 
 class Qwen3MLP:
@@ -197,13 +214,13 @@ class Qwen3MLP:
         self.use_fast_swiglu = use_fast_swiglu
 
     def __call__(self, x: mx.array) -> mx.array:
-        gate = silu(linear(x, self.w_gate))
-        up = linear(x, self.w_up)
+        gate = silu(_linear_maybe_quantized(x, self.w_gate))
+        up = _linear_maybe_quantized(x, self.w_up)
         if self.use_fast_swiglu:
             h = swiglu(gate, up)
         else:
             h = gate * up
-        return linear(h, self.w_down)
+        return _linear_maybe_quantized(h, self.w_down)
 
 
 class Qwen3TransformerBlock:
@@ -314,6 +331,20 @@ class Qwen3ModelWeek2:
         self.use_tiled_prefill_attention = use_tiled_prefill_attention
         self.use_bounded_kv_capacity = use_bounded_kv_capacity
 
+        quantized = features.quantized_weights
+
+        def maybe_packed(mlx_layer: Any) -> mx.array | QuantizedWeights:
+            # 装配接缝: checkpoint 开了量化就保留打包格式 (QuantizedWeights),
+            # 前向里 _linear_maybe_quantized 按类型分流到量化 kernel;
+            # 没开就当场展开成 dense bf16, 前向走普通 linear。
+            if quantized:
+                return QuantizedWeights.from_mlx_layer(
+                    mlx_layer,
+                    use_simdgroup_matmul=features.simdgroup_matmul,
+                    use_mlx_quantized_linear=use_mlx_quantized_linear,
+                )
+            return dequantize_linear(mlx_layer)
+
         layers = []
         for layer in mlx_model.model.layers:
             sa = layer.self_attn
@@ -326,15 +357,15 @@ class Qwen3ModelWeek2:
                     head_dim=args.head_dim,
                     intermediate_size=args.intermediate_size,
                     rms_norm_eps=args.rms_norm_eps,
-                    wq=dequantize_linear(sa.q_proj),
-                    wk=dequantize_linear(sa.k_proj),
-                    wv=dequantize_linear(sa.v_proj),
-                    wo=dequantize_linear(sa.o_proj),
+                    wq=maybe_packed(sa.q_proj),
+                    wk=maybe_packed(sa.k_proj),
+                    wv=maybe_packed(sa.v_proj),
+                    wo=maybe_packed(sa.o_proj),
                     q_norm=sa.q_norm.weight,
                     k_norm=sa.k_norm.weight,
-                    w_gate=dequantize_linear(mlp.gate_proj),
-                    w_up=dequantize_linear(mlp.up_proj),
-                    w_down=dequantize_linear(mlp.down_proj),
+                    w_gate=maybe_packed(mlp.gate_proj),
+                    w_up=maybe_packed(mlp.up_proj),
+                    w_down=maybe_packed(mlp.down_proj),
                     w_input_layernorm=layer.input_layernorm.weight,
                     w_post_attention_layernorm=layer.post_attention_layernorm.weight,
                     max_seq_len=getattr(args, "max_position_embeddings", 32768),
@@ -352,25 +383,46 @@ class Qwen3ModelWeek2:
         self.layers_inner = layers
         self.precision = mx.bfloat16
 
-        self.embed_tokens = Embedding(
-            args.vocab_size,
-            args.hidden_size,
-            dequantize_linear(mlx_model.model.embed_tokens),
-        )
-        self.norm = RMSNorm(args.hidden_size, mlx_model.model.norm.weight)
-        if not args.tie_word_embeddings:
-            self.lm_head = Embedding(
+        # 词表同走装配接缝: 量化时保留打包表 (QuantizedEmbedding),
+        # 查表只解被查的行 (Task 1), 出口打分走 quantized_linear (as_linear)。
+        if quantized:
+            self.embed_tokens = QuantizedEmbedding(
                 args.vocab_size,
                 args.hidden_size,
-                dequantize_linear(mlx_model.lm_head),
+                maybe_packed(mlx_model.model.embed_tokens),
             )
+        else:
+            self.embed_tokens = Embedding(
+                args.vocab_size,
+                args.hidden_size,
+                dequantize_linear(mlx_model.model.embed_tokens),
+            )
+        self.norm = RMSNorm(args.hidden_size, mlx_model.model.norm.weight)
+        if not args.tie_word_embeddings:
+            if quantized:
+                self.lm_head = QuantizedEmbedding(
+                    args.vocab_size,
+                    args.hidden_size,
+                    maybe_packed(mlx_model.lm_head),
+                )
+            else:
+                self.lm_head = Embedding(
+                    args.vocab_size,
+                    args.hidden_size,
+                    dequantize_linear(mlx_model.lm_head),
+                )
         else:
             self.lm_head = self.embed_tokens
 
         # 同上的对账别名: profiler 用 embedding 查表、用 w_lm_head 判断
-        # 出口是否与查表共用一张表 (tie=True 时为 None).
+        # 出口是否与查表共用一张表 (tie=True 时为 None; 量化路径没有
+        # 展开的 dense 表, getattr 兜底为 None).
         self.embedding = self.embed_tokens
-        self.w_lm_head = None if args.tie_word_embeddings else self.lm_head.weight
+        self.w_lm_head = (
+            None
+            if args.tie_word_embeddings
+            else getattr(self.lm_head, "weight", None)
+        )
 
     def create_kv_cache(self, capacity: int | None = None) -> list[TinyKvCache]:
         return [

@@ -83,7 +83,21 @@ def mlx_quantized_linear(
     w: QuantizedWeights,
     bias: mx.array | None = None,
 ) -> mx.array:
-    pass
+    # 对照组: 同样的打包权重走 MLX 自带的 quantized_matmul。形状处理与
+    # quantized_matmul 相同: 前导维压成 M, 算完按原前导维还原。
+    *lead, D = x.shape
+    out = mx.quantized_matmul(
+        x.reshape(-1, D),
+        w.weight,
+        w.scales,
+        w.biases,
+        group_size=w.group_size,
+        bits=w.bits,
+        transpose=True,
+    )
+    if bias is not None:
+        out = out + bias
+    return out.reshape(*lead, -1)
 
 
 def quantized_matmul(
@@ -277,4 +291,29 @@ def quantized_linear(
     w: QuantizedWeights,
     bias: mx.array | None = None,
 ) -> mx.array:
-    pass
+    # 模型内的统一入口, 两层分流:
+    #   1. use_mlx_quantized_linear → 对照组, 整层走 MLX 自带 kernel;
+    #   2. 否则按 M 分流: decode (M ≤ 8) 走 matvec 通道, 更长走 matmul。
+    #      两个通道都进我们的 primitive, 区别只在 kernel 的选择。
+    if w.use_mlx_quantized_linear:
+        return mlx_quantized_linear(x, w, bias)
+    M = x.size // x.shape[-1]
+    if M <= 8:
+        out = quantized_matvec_custom(
+            w.scales, w.biases, w.group_size, w.bits, x, w.weight, transpose_b=True
+        )
+    else:
+        out = quantized_matmul(
+            w.scales,
+            w.biases,
+            w.group_size,
+            w.bits,
+            x,
+            w.weight,
+            transpose_b=True,
+            use_simdgroup=w.use_simdgroup_matmul,
+            use_split_k=w.use_split_k_matmul,
+        )
+    if bias is not None:
+        out = out + bias
+    return out

@@ -1,5 +1,10 @@
 import mlx.core as mx
-from .quantize import QuantizedWeights, dequantize_linear, dequantize_weights
+from .quantize import (
+    QuantizedWeights,
+    dequantize_linear,
+    dequantize_weights,
+    quantized_linear,
+)
 
 
 class Embedding:
@@ -72,4 +77,6 @@ class QuantizedEmbedding:
         # return self.weight[x]
 
     def as_linear(self, x: mx.array) -> mx.array:
-        return x @ self.weight.T
+        # 出口投影 (B,L,E) @ (E,V): 词表在打包格式里, 不展开整表, 走
+        # quantized_linear (内部按 M 分流 matvec/matmul, 见 quantize.py)。
+        return quantized_linear(x, self.weight_object)
